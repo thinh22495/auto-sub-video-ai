@@ -1,0 +1,18 @@
+# CPU-only override: docker compose -f docker-compose.yml -f docker-compose.cpu.yml up
+# Use this if you don't have an NVIDIA GPU
+
+services:
+  autosub-app:
+    deploy:
+      resources:
+        reservations:
+          devices: []
+    environment:
+      - AUTOSUB_WHISPER_DEVICE=cpu
+      - AUTOSUB_WHISPER_COMPUTE_TYPE=float32
+
+  autosub-ollama:
+    deploy:
+      resources:
+        reservations:
+          devices: []

@@ -1,0 +1,69 @@
+services:
+  autosub-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: autosub-app
+    ports:
+      - "${AUTOSUB_PORT:-8080}:8000"
+    volumes:
+      - ./data/videos:/data/videos
+      - ./data/subtitles:/data/subtitles
+      - ./data/output:/data/output
+      - ./data/models:/data/models
+      - ./data/db:/data/db
+      - ./.env:/app/.env:ro
+    environment:
+      - AUTOSUB_REDIS_URL=redis://autosub-redis:6379/0
+      - AUTOSUB_OLLAMA_BASE_URL=http://autosub-ollama:11434
+    depends_on:
+      autosub-redis:
+        condition: service_healthy
+      autosub-ollama:
+        condition: service_started
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  autosub-redis:
+    image: redis:7-alpine
+    container_name: autosub-redis
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  autosub-ollama:
+    image: ollama/ollama:latest
+    container_name: autosub-ollama
+    volumes:
+      - ./data/ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  redis-data:

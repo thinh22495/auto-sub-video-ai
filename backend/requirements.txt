@@ -1,0 +1,24 @@
+# Web Framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Settings
+pydantic-settings==2.7.1
+
+# Database
+sqlalchemy==2.0.36
+alembic==1.14.1
+
+# Task Queue + Async Redis (for WebSocket pub/sub)
+celery[redis]==5.4.0
+redis[hiredis]==5.2.1
+
+# HTTP Client (for Ollama API)
+httpx==0.28.1
+
+# AI / ML - Speech-to-Text
+faster-whisper==1.1.0
+
+# Subtitle file generation/parsing
+pysubs2==1.7.3
