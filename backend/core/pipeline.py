@@ -36,6 +36,7 @@ class SubtitlePipeline:
         output_formats: list[str] | None = None,
         burn_in: bool = False,
         whisper_model: str = "large-v3-turbo",
+        ollama_model: str | None = None,
         subtitle_style: dict | None = None,
         on_progress: ProgressCallback | None = None,
     ):
@@ -45,6 +46,7 @@ class SubtitlePipeline:
         self.output_formats = output_formats or ["srt"]
         self.burn_in = burn_in
         self.whisper_model = whisper_model
+        self.ollama_model = ollama_model
         self.subtitle_style = subtitle_style
         self.on_progress = on_progress
 
@@ -161,15 +163,32 @@ class SubtitlePipeline:
         return result
 
     def _step_translate(self, segments: list[Segment], source_lang: str) -> list[Segment]:
+        from backend.core.translator import translate_segments
+        from backend.core.language_detector import LANGUAGE_NAMES
+
         self._current_step = 2
+        source_name = LANGUAGE_NAMES.get(source_lang, source_lang)
+        target_name = LANGUAGE_NAMES.get(self.target_language, self.target_language)
+
         self._report(
             (self._current_step / self.total_steps) * 100,
-            f"Translation: {source_lang} -> {self.target_language}",
+            f"Translating: {source_name} -> {target_name}",
         )
 
-        # Translation will be implemented in Phase 3
-        # For now, return segments as-is
-        logger.warning("Translation not yet implemented (Phase 3). Skipping.")
+        def on_translate_progress(percent, msg):
+            base = (self._current_step / self.total_steps) * 100
+            step_range = (1 / self.total_steps) * 100
+            overall = base + (percent / 100) * step_range
+            self._report(overall, msg)
+
+        segments = translate_segments(
+            segments=segments,
+            source_lang=source_name,
+            target_lang=target_name,
+            model=self.ollama_model,
+            on_progress=on_translate_progress,
+        )
+
         return segments
 
     def _step_generate_subtitles(self, segments: list[Segment], base_name: str) -> list[str]:

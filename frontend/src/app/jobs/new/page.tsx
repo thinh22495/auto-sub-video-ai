@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import type { JobCreate } from "@/lib/types";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import {
   Play,
   FileVideo,
@@ -11,18 +12,20 @@ import {
   Subtitles,
   Settings2,
   Loader2,
+  HardDrive,
 } from "lucide-react";
 
-interface LanguageOption {
-  code: string;
+interface OllamaModelOption {
   name: string;
+  size_gb: number;
+  parameter_size: string;
 }
 
 export default function NewJobPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [languages, setLanguages] = useState<LanguageOption[]>([]);
+  const [ollamaModels, setOllamaModels] = useState<OllamaModelOption[]>([]);
 
   // Form state
   const [inputPath, setInputPath] = useState("");
@@ -31,11 +34,20 @@ export default function NewJobPage() {
   const [outputFormats, setOutputFormats] = useState<string[]>(["srt"]);
   const [burnIn, setBurnIn] = useState(false);
   const [whisperModel, setWhisperModel] = useState("large-v3-turbo");
+  const [ollamaModel, setOllamaModel] = useState<string>("");
 
   useEffect(() => {
     api
-      .get<LanguageOption[]>("/languages")
-      .then(setLanguages)
+      .get<OllamaModelOption[]>("/models/ollama")
+      .then((models) => {
+        setOllamaModels(models);
+        // Auto-select default model if available
+        const defaultModel = models.find((m) =>
+          m.name.includes("qwen2.5")
+        );
+        if (defaultModel) setOllamaModel(defaultModel.name);
+        else if (models.length > 0) setOllamaModel(models[0].name);
+      })
       .catch(() => {});
   }, []);
 
@@ -45,6 +57,8 @@ export default function NewJobPage() {
     );
   };
 
+  const needsTranslation = targetLanguage !== "";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputPath.trim()) {
@@ -53,6 +67,10 @@ export default function NewJobPage() {
     }
     if (outputFormats.length === 0) {
       setError("Please select at least one output format");
+      return;
+    }
+    if (needsTranslation && !ollamaModel) {
+      setError("Please select a translation model or install one from the Models page");
       return;
     }
 
@@ -67,6 +85,7 @@ export default function NewJobPage() {
         output_formats: outputFormats,
         burn_in: burnIn,
         whisper_model: whisperModel,
+        ollama_model: needsTranslation ? ollamaModel : undefined,
       };
 
       const job = await api.post<{ id: string }>("/jobs", body);
@@ -108,42 +127,62 @@ export default function NewJobPage() {
         {/* Language Settings */}
         <Section icon={<Languages className="h-5 w-5" />} title="Language">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground">
-                Source Language
-              </label>
-              <select
-                value={sourceLanguage}
-                onChange={(e) => setSourceLanguage(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="auto">Auto-detect</option>
-                {languages.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.name} ({lang.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground">
-                Target Language (Translation)
-              </label>
-              <select
-                value={targetLanguage}
-                onChange={(e) => setTargetLanguage(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="">No translation</option>
-                {languages.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.name} ({lang.code})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <LanguageSelector
+              value={sourceLanguage}
+              onChange={setSourceLanguage}
+              label="Source Language"
+              allowAuto
+            />
+            <LanguageSelector
+              value={targetLanguage}
+              onChange={setTargetLanguage}
+              label="Target Language (Translation)"
+              allowNone
+              noneLabel="No translation"
+            />
           </div>
+          {needsTranslation && (
+            <p className="text-xs text-accent">
+              Translation enabled: subtitles will be translated via Ollama
+            </p>
+          )}
         </Section>
+
+        {/* Translation Model (shown only when translation is needed) */}
+        {needsTranslation && (
+          <Section
+            icon={<HardDrive className="h-5 w-5" />}
+            title="Translation Model"
+          >
+            {ollamaModels.length === 0 ? (
+              <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
+                No Ollama models installed. Go to the{" "}
+                <a href="/models/" className="underline">
+                  Models page
+                </a>{" "}
+                to download a translation model first.
+              </div>
+            ) : (
+              <>
+                <label className="block text-sm font-medium text-muted-foreground">
+                  Ollama Model
+                </label>
+                <select
+                  value={ollamaModel}
+                  onChange={(e) => setOllamaModel(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  {ollamaModels.map((m) => (
+                    <option key={m.name} value={m.name}>
+                      {m.name} ({m.size_gb}GB
+                      {m.parameter_size ? `, ${m.parameter_size}` : ""})
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+          </Section>
+        )}
 
         {/* Output Settings */}
         <Section icon={<Subtitles className="h-5 w-5" />} title="Output">
@@ -184,24 +223,29 @@ export default function NewJobPage() {
           </div>
         </Section>
 
-        {/* Model Settings */}
-        <Section icon={<Settings2 className="h-5 w-5" />} title="Model">
+        {/* Whisper Model Settings */}
+        <Section icon={<Settings2 className="h-5 w-5" />} title="Whisper Model">
           <label className="block text-sm font-medium text-muted-foreground">
-            Whisper Model
+            Speech-to-Text Model
           </label>
           <select
             value={whisperModel}
             onChange={(e) => setWhisperModel(e.target.value)}
             className="mt-1 w-full rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="tiny">tiny (fastest, lowest accuracy)</option>
-            <option value="base">base</option>
-            <option value="small">small</option>
-            <option value="medium">medium</option>
-            <option value="large-v2">large-v2</option>
-            <option value="large-v3">large-v3</option>
-            <option value="large-v3-turbo">large-v3-turbo (recommended)</option>
+            <option value="tiny">tiny - Fastest, lowest accuracy (~75MB)</option>
+            <option value="base">base - Fast, low accuracy (~142MB)</option>
+            <option value="small">small - Moderate speed, medium accuracy (~466MB)</option>
+            <option value="medium">medium - Slower, good accuracy (~1.5GB)</option>
+            <option value="large-v2">large-v2 - Slow, excellent accuracy (~3.1GB)</option>
+            <option value="large-v3">large-v3 - Slow, excellent accuracy (~3.1GB)</option>
+            <option value="large-v3-turbo">
+              large-v3-turbo - Balanced speed &amp; quality (~1.6GB, recommended)
+            </option>
           </select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Models are downloaded automatically on first use
+          </p>
         </Section>
 
         {/* Error */}

@@ -82,6 +82,7 @@ def run_pipeline(self, job_id: str):
             output_formats=output_formats,
             burn_in=job.burn_in,
             whisper_model=job.whisper_model,
+            ollama_model=job.ollama_model,
             subtitle_style=subtitle_style,
             on_progress=on_progress,
         )
