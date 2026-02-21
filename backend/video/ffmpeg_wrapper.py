@@ -73,9 +73,19 @@ def burn_subtitles(
     input_video: str,
     subtitle_file: str,
     output_path: str,
+    video_settings: dict | None = None,
     on_progress: ProgressCallback | None = None,
 ) -> str:
-    """Burn subtitles into video using libass filter."""
+    """
+    Burn subtitles into video using libass filter.
+
+    Args:
+        input_video: Path to the input video.
+        subtitle_file: Path to the subtitle file (.srt, .ass, .vtt).
+        output_path: Path for the output video.
+        video_settings: Optional encoding settings (crf, preset).
+        on_progress: Progress callback function.
+    """
     input_file = Path(input_video)
     sub_file = Path(subtitle_file)
 
@@ -88,6 +98,7 @@ def burn_subtitles(
 
     duration = get_duration(input_video)
     encoder = get_ffmpeg_encoder()
+    vs = video_settings or {}
 
     # Escape subtitle path for ffmpeg filter (backslashes and colons)
     escaped_sub = str(sub_file).replace("\\", "/").replace(":", "\\:")
@@ -99,6 +110,10 @@ def burn_subtitles(
     else:
         vf_filter = f"subtitles='{escaped_sub}'"
 
+    # Encoding quality from video_settings or defaults
+    crf = vs.get("crf", 23)
+    enc_preset = vs.get("preset", "medium")
+
     cmd = [
         "ffmpeg",
         "-hide_banner",
@@ -107,23 +122,18 @@ def burn_subtitles(
         "-vf", vf_filter,
         "-c:v", encoder,
         "-c:a", "copy",
-        "-progress", "pipe:1",
-        output_path,
     ]
 
-    # Add encoder-specific options
     if encoder == "h264_nvenc":
-        cmd.insert(-3, "-preset")
-        cmd.insert(-3, "p4")
-        cmd.insert(-3, "-cq")
-        cmd.insert(-3, "23")
+        nvenc_preset = _map_preset_to_nvenc(enc_preset)
+        cmd.extend(["-preset", nvenc_preset, "-cq", str(crf)])
     else:
-        cmd.insert(-3, "-preset")
-        cmd.insert(-3, "medium")
-        cmd.insert(-3, "-crf")
-        cmd.insert(-3, "23")
+        cmd.extend(["-preset", enc_preset, "-crf", str(crf)])
 
-    logger.info("Burning subtitles: %s + %s -> %s (encoder: %s)", input_video, subtitle_file, output_path, encoder)
+    cmd.extend(["-progress", "pipe:1", output_path])
+
+    logger.info("Burning subtitles: %s + %s -> %s (encoder: %s, crf=%s, preset=%s)",
+                input_video, subtitle_file, output_path, encoder, crf, enc_preset)
 
     process = subprocess.Popen(
         cmd,
@@ -143,6 +153,22 @@ def burn_subtitles(
 
     logger.info("Subtitle burn-in complete: %s", output_path)
     return output_path
+
+
+def _map_preset_to_nvenc(preset: str) -> str:
+    """Map x264 preset names to NVENC equivalents."""
+    mapping = {
+        "ultrafast": "p1",
+        "superfast": "p2",
+        "veryfast": "p3",
+        "faster": "p3",
+        "fast": "p4",
+        "medium": "p4",
+        "slow": "p5",
+        "slower": "p6",
+        "veryslow": "p7",
+    }
+    return mapping.get(preset, "p4")
 
 
 def get_duration(file_path: str) -> float:

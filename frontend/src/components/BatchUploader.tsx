@@ -1,0 +1,362 @@
+"use client";
+
+import { useState, useCallback } from "react";
+import { api } from "@/lib/api-client";
+import type { Batch, BatchCreate, SubtitleStyle } from "@/lib/types";
+import FileExplorer from "@/components/FileExplorer";
+import {
+  FolderOpen,
+  X,
+  Plus,
+  Play,
+  Loader2,
+  Globe,
+  FileVideo,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+
+interface BatchFile {
+  path: string;
+  filename: string;
+  source_language: string | null;
+}
+
+interface BatchUploaderProps {
+  onBatchCreated: (batch: Batch) => void;
+}
+
+export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
+  // Files
+  const [files, setFiles] = useState<BatchFile[]>([]);
+  const [showBrowser, setShowBrowser] = useState(false);
+
+  // Shared config
+  const [targetLanguage, setTargetLanguage] = useState("");
+  const [outputFormats, setOutputFormats] = useState<string[]>(["srt"]);
+  const [burnIn, setBurnIn] = useState(false);
+  const [enableDiarization, setEnableDiarization] = useState(false);
+  const [whisperModel, setWhisperModel] = useState("large-v3-turbo");
+  const [ollamaModel, setOllamaModel] = useState("");
+  const [videoPreset, setVideoPreset] = useState("");
+  const [batchName, setBatchName] = useState("");
+
+  // UI state
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const addFile = useCallback((path: string) => {
+    const filename = path.split("/").pop() || path.split("\\").pop() || path;
+    setFiles((prev) => {
+      if (prev.some((f) => f.path === path)) return prev;
+      return [...prev, { path, filename, source_language: null }];
+    });
+    setShowBrowser(false);
+  }, []);
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateFileLanguage = (index: number, lang: string | null) => {
+    setFiles((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], source_language: lang };
+      return next;
+    });
+  };
+
+  const toggleFormat = (fmt: string) => {
+    setOutputFormats((prev) =>
+      prev.includes(fmt)
+        ? prev.filter((f) => f !== fmt)
+        : [...prev, fmt]
+    );
+  };
+
+  const handleSubmit = async () => {
+    if (files.length === 0) {
+      setError("Please add at least one video file");
+      return;
+    }
+    if (outputFormats.length === 0) {
+      setError("Please select at least one output format");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const payload: BatchCreate = {
+        name: batchName || undefined,
+        files: files.map((f) => ({
+          input_path: f.path,
+          source_language: f.source_language || undefined,
+        })),
+        target_language: targetLanguage || undefined,
+        output_formats: outputFormats,
+        burn_in: burnIn,
+        enable_diarization: enableDiarization,
+        whisper_model: whisperModel,
+        ollama_model: ollamaModel || undefined,
+        video_preset: videoPreset || undefined,
+      };
+
+      const batch = await api.post<Batch>("/batch", payload);
+      onBatchCreated(batch);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Batch name */}
+      <div>
+        <label className="mb-1 block text-sm font-medium text-foreground">
+          Batch Name (optional)
+        </label>
+        <input
+          type="text"
+          value={batchName}
+          onChange={(e) => setBatchName(e.target.value)}
+          placeholder={`Batch (${files.length} files)`}
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+        />
+      </div>
+
+      {/* File list */}
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <label className="text-sm font-medium text-foreground">
+            Video Files ({files.length})
+          </label>
+          <button
+            onClick={() => setShowBrowser(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-muted"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Files
+          </button>
+        </div>
+
+        {showBrowser && (
+          <div className="mb-3 rounded-lg border border-border">
+            <FileExplorer
+              onSelect={(path) => addFile(path)}
+              filterType="video"
+            />
+          </div>
+        )}
+
+        {files.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-8 text-muted-foreground cursor-pointer hover:border-primary/50"
+            onClick={() => setShowBrowser(true)}
+          >
+            <FileVideo className="mb-2 h-8 w-8" />
+            <p className="text-sm">Click to browse and select video files</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5 rounded-lg border border-border p-2">
+            {files.map((file, i) => (
+              <div
+                key={file.path}
+                className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2"
+              >
+                <FileVideo className="h-4 w-4 shrink-0 text-primary" />
+                <span className="flex-1 truncate text-sm text-foreground">
+                  {file.filename}
+                </span>
+                <select
+                  value={file.source_language || ""}
+                  onChange={(e) => updateFileLanguage(i, e.target.value || null)}
+                  className="rounded border border-border bg-background px-2 py-0.5 text-xs text-foreground"
+                  title="Source language override"
+                >
+                  <option value="">Auto-detect</option>
+                  <option value="en">English</option>
+                  <option value="ja">Japanese</option>
+                  <option value="zh">Chinese</option>
+                  <option value="ko">Korean</option>
+                  <option value="vi">Vietnamese</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                  <option value="es">Spanish</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="ru">Russian</option>
+                  <option value="th">Thai</option>
+                </select>
+                <button
+                  onClick={() => removeFile(i)}
+                  className="rounded p-1 text-muted-foreground hover:text-danger"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Shared config */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            Target Language
+          </label>
+          <select
+            value={targetLanguage}
+            onChange={(e) => setTargetLanguage(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">No translation</option>
+            <option value="en">English</option>
+            <option value="vi">Vietnamese</option>
+            <option value="ja">Japanese</option>
+            <option value="zh">Chinese</option>
+            <option value="ko">Korean</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="es">Spanish</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="th">Thai</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            Whisper Model
+          </label>
+          <select
+            value={whisperModel}
+            onChange={(e) => setWhisperModel(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="tiny">tiny (fastest)</option>
+            <option value="base">base</option>
+            <option value="small">small</option>
+            <option value="medium">medium</option>
+            <option value="large-v3">large-v3 (best)</option>
+            <option value="large-v3-turbo">large-v3-turbo (recommended)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Output formats */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          Output Formats
+        </label>
+        <div className="flex gap-2">
+          {["srt", "ass", "vtt"].map((fmt) => (
+            <button
+              key={fmt}
+              onClick={() => toggleFormat(fmt)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium uppercase transition-colors ${
+                outputFormats.includes(fmt)
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              .{fmt}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Toggles */}
+      <div className="flex gap-4">
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={burnIn}
+            onChange={(e) => setBurnIn(e.target.checked)}
+            className="rounded border-border"
+          />
+          Burn subtitles into video
+        </label>
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={enableDiarization}
+            onChange={(e) => setEnableDiarization(e.target.checked)}
+            className="rounded border-border"
+          />
+          Speaker diarization
+        </label>
+      </div>
+
+      {/* Advanced options */}
+      <button
+        onClick={() => setShowAdvanced(!showAdvanced)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {showAdvanced ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        Advanced Options
+      </button>
+
+      {showAdvanced && (
+        <div className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-muted/30 p-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Ollama Model (for translation)
+            </label>
+            <input
+              type="text"
+              value={ollamaModel}
+              onChange={(e) => setOllamaModel(e.target.value)}
+              placeholder="qwen2.5:7b"
+              className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Video Preset
+            </label>
+            <select
+              value={videoPreset}
+              onChange={(e) => setVideoPreset(e.target.value)}
+              className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
+            >
+              <option value="">Default</option>
+              <option value="netflix">Netflix</option>
+              <option value="youtube">YouTube</option>
+              <option value="bluray">Blu-ray</option>
+              <option value="anime">Anime Fansub</option>
+              <option value="accessibility">Accessibility</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
+          {error}
+        </div>
+      )}
+
+      {/* Submit */}
+      <button
+        onClick={handleSubmit}
+        disabled={submitting || files.length === 0}
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+      >
+        {submitting ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Play className="h-4 w-4" />
+        )}
+        {submitting
+          ? "Creating batch..."
+          : `Start Batch (${files.length} file${files.length !== 1 ? "s" : ""})`}
+      </button>
+    </div>
+  );
+}

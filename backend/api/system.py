@@ -1,3 +1,4 @@
+import os
 import platform
 import shutil
 import subprocess
@@ -8,6 +9,42 @@ from fastapi import APIRouter
 from backend.config.settings import settings
 
 router = APIRouter(tags=["system"])
+
+
+def _get_ram_info() -> dict:
+    """Get RAM usage info. Works cross-platform."""
+    try:
+        import psutil
+        mem = psutil.virtual_memory()
+        return {
+            "total_gb": round(mem.total / (1024**3), 1),
+            "available_gb": round(mem.available / (1024**3), 1),
+            "used_percent": round(mem.percent, 1),
+        }
+    except ImportError:
+        return {"total_gb": 0, "available_gb": 0, "used_percent": 0}
+
+
+def _get_loaded_models() -> dict:
+    """Get info about available/loaded models."""
+    models: dict = {"whisper": [], "ollama": []}
+
+    # Check whisper models on disk
+    whisper_dir = Path(settings.MODEL_DIR) / "whisper"
+    if whisper_dir.exists():
+        models["whisper"] = [d.name for d in whisper_dir.iterdir() if d.is_dir()]
+
+    # Check ollama models
+    try:
+        import httpx
+        resp = httpx.get(f"{settings.OLLAMA_BASE_URL}/api/tags", timeout=3)
+        if resp.status_code == 200:
+            data = resp.json()
+            models["ollama"] = [m["name"] for m in data.get("models", [])]
+    except Exception:
+        pass
+
+    return models
 
 
 def _check_gpu() -> dict:
@@ -86,7 +123,11 @@ async def health_check():
 
 @router.get("/system/info")
 async def system_info():
+    from backend.main import get_uptime_seconds
+
     gpu_info = _check_gpu()
+    ram_info = _get_ram_info()
+    models_info = _get_loaded_models()
 
     ffmpeg_version = "not found"
     try:
@@ -98,16 +139,31 @@ async def system_info():
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
+    uptime = get_uptime_seconds()
+    hours, remainder = divmod(int(uptime), 3600)
+    minutes, seconds = divmod(remainder, 60)
+
     return {
         "platform": platform.system(),
         "platform_version": platform.version(),
         "python_version": platform.python_version(),
         "ffmpeg_version": ffmpeg_version,
+        "uptime_seconds": round(uptime),
+        "uptime_formatted": f"{hours}h {minutes}m {seconds}s",
+        "ram": ram_info,
         "gpu": gpu_info,
+        "models": models_info,
+        "disk": {
+            "videos": _disk_usage(settings.VIDEO_INPUT_DIR),
+            "subtitles": _disk_usage(settings.SUBTITLE_OUTPUT_DIR),
+            "output": _disk_usage(settings.VIDEO_OUTPUT_DIR),
+            "models": _disk_usage(settings.MODEL_DIR),
+        },
         "settings": {
             "whisper_model": settings.DEFAULT_WHISPER_MODEL,
             "ollama_model": settings.DEFAULT_OLLAMA_MODEL,
             "whisper_device": settings.WHISPER_DEVICE,
             "max_concurrent_jobs": settings.MAX_CONCURRENT_JOBS,
+            "default_subtitle_format": settings.DEFAULT_SUBTITLE_FORMAT,
         },
     }

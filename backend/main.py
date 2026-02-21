@@ -1,3 +1,4 @@
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -8,15 +9,30 @@ from fastapi.staticfiles import StaticFiles
 from backend.api.router import api_router
 from backend.config.settings import settings
 from backend.db.database import Base, engine
+from backend.utils.logging import setup_logging, get_logger
+
+logger = get_logger(__name__)
+
+# Track server start time for uptime calculation
+_start_time: float = 0.0
+
+
+def get_uptime_seconds() -> float:
+    return time.time() - _start_time
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _start_time
+    setup_logging()
+    _start_time = time.time()
+    logger.info("AutoSubAI starting up...")
     # Startup: create tables and ensure directories exist
     settings.ensure_directories()
     Base.metadata.create_all(bind=engine)
+    logger.info("Database initialized, directories ensured.")
     yield
-    # Shutdown: cleanup if needed
+    logger.info("AutoSubAI shutting down.")
 
 
 app = FastAPI(

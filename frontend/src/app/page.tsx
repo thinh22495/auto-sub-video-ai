@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api-client";
-import type { HealthStatus, Job } from "@/lib/types";
+import type { Batch, HealthStatus, Job } from "@/lib/types";
 import {
   Activity,
   Cpu,
@@ -13,24 +13,51 @@ import {
   XCircle,
   Loader2,
   Clock,
+  Layers,
 } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardPage() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     api
       .get<HealthStatus>("/health")
       .then(setHealth)
       .catch((err) => setError(err.message));
     api
-      .get<Job[]>("/jobs", { params: { limit: "10" } })
+      .get<Job[]>("/jobs", { params: { limit: "15" } })
       .then(setJobs)
       .catch(() => {});
+    api
+      .get<Batch[]>("/batch", { params: { limit: "5" } })
+      .then(setBatches)
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Auto-refresh when active jobs exist
+  useEffect(() => {
+    const hasActive = jobs.some((j) =>
+      ["QUEUED", "PROCESSING"].includes(j.status)
+    );
+    if (!hasActive) return;
+
+    const interval = setInterval(fetchData, 8000);
+    return () => clearInterval(interval);
+  }, [jobs, fetchData]);
+
+  // Quick stats
+  const activeJobs = jobs.filter((j) => j.status === "PROCESSING").length;
+  const queuedJobs = jobs.filter((j) => j.status === "QUEUED").length;
+  const completedJobs = jobs.filter((j) => j.status === "COMPLETED").length;
+  const failedJobs = jobs.filter((j) => j.status === "FAILED").length;
 
   return (
     <div className="space-y-6">
@@ -42,16 +69,53 @@ export default function DashboardPage() {
             AutoSubAI - Offline video subtitle generation
           </p>
         </div>
-        <Link
-          href="/jobs/new/"
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <PlusCircle className="h-4 w-4" />
-          New Job
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/batch/"
+            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            <Layers className="h-4 w-4" />
+            Batch
+          </Link>
+          <Link
+            href="/jobs/new/"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <PlusCircle className="h-4 w-4" />
+            New Job
+          </Link>
+        </div>
       </div>
 
-      {/* Status Cards */}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <QuickStat
+          label="Active"
+          value={activeJobs}
+          icon={<Loader2 className={`h-4 w-4 ${activeJobs > 0 ? "animate-spin" : ""}`} />}
+          color="text-primary"
+        />
+        <QuickStat
+          label="Queued"
+          value={queuedJobs}
+          icon={<Clock className="h-4 w-4" />}
+          color="text-warning"
+        />
+        <QuickStat
+          label="Completed"
+          value={completedJobs}
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          color="text-success"
+        />
+        <QuickStat
+          label="Failed"
+          value={failedJobs}
+          icon={<XCircle className="h-4 w-4" />}
+          color="text-danger"
+        />
+      </div>
+
+      {/* System Status Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatusCard
           title="API Server"
@@ -96,15 +160,82 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Active Batches */}
+      {batches.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">
+              Recent Batches
+            </h2>
+            <Link
+              href="/batch/"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              View all
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {batches.map((batch) => {
+              const isActive = ["QUEUED", "PROCESSING"].includes(batch.status);
+              const percent =
+                batch.total_jobs > 0
+                  ? (batch.completed_jobs / batch.total_jobs) * 100
+                  : 0;
+
+              return (
+                <Link
+                  key={batch.id}
+                  href="/batch/"
+                  className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted"
+                >
+                  <BatchStatusIcon status={batch.status} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {batch.name || `Batch ${batch.id.slice(0, 8)}`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {batch.completed_jobs}/{batch.total_jobs} completed
+                      {batch.failed_jobs > 0 && (
+                        <span className="text-danger">
+                          {" "}
+                          &middot; {batch.failed_jobs} failed
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {isActive && (
+                    <div className="w-24">
+                      <div className="h-1.5 rounded-full bg-muted">
+                        <div
+                          className="h-1.5 rounded-full bg-primary transition-all"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Recent Jobs */}
       <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">
-          Recent Jobs
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Recent Jobs</h2>
+          {jobs.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {jobs.length} shown
+            </span>
+          )}
+        </div>
         {jobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Activity className="mb-3 h-8 w-8" />
-            <p className="text-sm">No jobs yet. Create your first subtitle job!</p>
+            <p className="text-sm">
+              No jobs yet. Create your first subtitle job!
+            </p>
             <Link
               href="/jobs/new/"
               className="mt-3 text-sm font-medium text-primary hover:underline"
@@ -121,7 +252,7 @@ export default function DashboardPage() {
                 className="flex items-center gap-4 rounded-lg border border-border p-4 transition-colors hover:bg-muted"
               >
                 <JobStatusIcon status={job.status} />
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">
                     {job.input_filename}
                   </p>
@@ -143,7 +274,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 )}
-                {job.output_formats && (
+                {job.status === "COMPLETED" && (
                   <div className="flex gap-1">
                     {job.output_formats.map((fmt) => (
                       <span
@@ -166,6 +297,28 @@ export default function DashboardPage() {
           Failed to connect to API: {error}
         </div>
       )}
+    </div>
+  );
+}
+
+function QuickStat({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span className={color}>{icon}</span>
+      </div>
+      <p className={`mt-1 text-2xl font-bold ${color}`}>{value}</p>
     </div>
   );
 }
@@ -215,6 +368,21 @@ function JobStatusIcon({ status }: { status: string }) {
       return <Clock className="h-5 w-5 text-warning" />;
     default:
       return <Activity className="h-5 w-5 text-muted-foreground" />;
+  }
+}
+
+function BatchStatusIcon({ status }: { status: string }) {
+  switch (status) {
+    case "COMPLETED":
+      return <CheckCircle2 className="h-5 w-5 text-success" />;
+    case "PARTIAL":
+      return <XCircle className="h-5 w-5 text-warning" />;
+    case "PROCESSING":
+      return <Loader2 className="h-5 w-5 animate-spin text-primary" />;
+    case "QUEUED":
+      return <Clock className="h-5 w-5 text-warning" />;
+    default:
+      return <Layers className="h-5 w-5 text-muted-foreground" />;
   }
 }
 

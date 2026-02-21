@@ -81,9 +81,11 @@ def run_pipeline(self, job_id: str):
             target_language=job.target_language,
             output_formats=output_formats,
             burn_in=job.burn_in,
+            enable_diarization=job.enable_diarization,
             whisper_model=job.whisper_model,
             ollama_model=job.ollama_model,
             subtitle_style=subtitle_style,
+            video_preset=job.video_preset,
             on_progress=on_progress,
         )
 

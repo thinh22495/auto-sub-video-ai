@@ -69,6 +69,49 @@ export interface Batch {
   failed_jobs: number;
   created_at: string;
   completed_at: string | null;
+  jobs?: BatchJobSummary[];
+}
+
+export interface BatchJobSummary {
+  id: string;
+  status: JobStatus;
+  input_filename: string;
+  current_step: string | null;
+  progress_percent: number;
+  error_message: string | null;
+  output_subtitle_paths: string[] | null;
+  output_video_path: string | null;
+}
+
+export interface BatchCreate {
+  name?: string;
+  files: { input_path: string; source_language?: string | null }[];
+  target_language?: string | null;
+  output_formats: string[];
+  burn_in?: boolean;
+  enable_diarization?: boolean;
+  whisper_model?: string;
+  ollama_model?: string;
+  subtitle_style?: SubtitleStyle;
+  video_preset?: string;
+  priority?: number;
+}
+
+export interface BatchProgressEvent {
+  type: "batch_progress" | "job_update";
+  batch_id?: string;
+  overall_percent?: number;
+  total?: number;
+  completed?: number;
+  failed?: number;
+  processing?: number;
+  queued?: number;
+  all_done?: boolean;
+  // job_update fields
+  job_id?: string;
+  status?: JobStatus;
+  progress_percent?: number;
+  message?: string;
 }
 
 export interface Preset {
@@ -78,6 +121,8 @@ export interface Preset {
   subtitle_style: SubtitleStyle;
   video_settings: Record<string, unknown> | null;
   is_builtin: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface HealthStatus {
@@ -114,4 +159,35 @@ export interface JobProgressEvent {
   progress_percent: number;
   eta_seconds: number | null;
   message: string;
+}
+
+// ---------- Subtitle Editor ----------
+
+export interface SubtitleSegment {
+  index: number;
+  start: number;
+  end: number;
+  text: string;
+  speaker: string | null;
+  translated_text?: string | null;
+}
+
+export interface ParsedSubtitles {
+  job_id: string;
+  format: string;
+  source_path: string;
+  segments: SubtitleSegment[];
+}
+
+export interface SubtitleVersion {
+  id: string;
+  version: number;
+  format: string;
+  created_at: string | null;
+  description: string | null;
+}
+
+export interface SubtitleVersionDetail extends SubtitleVersion {
+  content: string;
+  segments: SubtitleSegment[];
 }

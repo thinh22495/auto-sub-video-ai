@@ -6,12 +6,13 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.db.database import get_db
 from backend.db import crud
+from backend.db.models import SubtitleVersion
 from backend.config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -309,3 +310,443 @@ def download_result(
         filename=target.name,
         media_type=media_types.get(target.suffix, "application/octet-stream"),
     )
+
+
+# ---------- Subtitle Editing ----------
+
+class SubtitleSegment(BaseModel):
+    index: int
+    start: float
+    end: float
+    text: str
+    speaker: Optional[str] = None
+    translated_text: Optional[str] = None
+
+
+class SubtitleUpdateRequest(BaseModel):
+    segments: list[SubtitleSegment]
+    format: str = "srt"
+    description: Optional[str] = None
+
+
+class SubtitleVersionResponse(BaseModel):
+    id: str
+    version: int
+    format: str
+    created_at: str
+    description: Optional[str]
+
+
+@router.get("/{job_id}/subtitles/parsed")
+def get_parsed_subtitles(job_id: str, db: Session = Depends(get_db)):
+    """Get subtitle segments as structured data for editor."""
+    job = crud.get_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status != "COMPLETED":
+        raise HTTPException(status_code=400, detail="Job not completed yet")
+
+    paths = json.loads(job.output_subtitle_paths) if job.output_subtitle_paths else []
+    if not paths:
+        raise HTTPException(status_code=404, detail="No subtitle files found")
+
+    # Prefer SRT for parsing, fallback to first available
+    target_path = paths[0]
+    for p in paths:
+        if p.endswith(".srt"):
+            target_path = p
+            break
+
+    path = Path(target_path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Subtitle file not found on disk")
+
+    segments = _parse_subtitle_file(str(path))
+    return {
+        "job_id": job_id,
+        "format": path.suffix.lstrip("."),
+        "source_path": str(path),
+        "segments": segments,
+    }
+
+
+@router.put("/{job_id}/subtitles")
+def update_subtitles(job_id: str, req: SubtitleUpdateRequest, db: Session = Depends(get_db)):
+    """Update subtitles with edited segments. Creates a new version."""
+    job = crud.get_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status != "COMPLETED":
+        raise HTTPException(status_code=400, detail="Job not completed yet")
+
+    # Generate subtitle content from segments
+    content = _generate_subtitle_content(req.segments, req.format)
+
+    # Determine version number
+    existing_versions = (
+        db.query(SubtitleVersion)
+        .filter(SubtitleVersion.job_id == job_id)
+        .order_by(SubtitleVersion.version.desc())
+        .first()
+    )
+    next_version = (existing_versions.version + 1) if existing_versions else 1
+
+    # Save version to DB
+    version = SubtitleVersion(
+        job_id=job_id,
+        version=next_version,
+        format=req.format,
+        content=content,
+        description=req.description or f"Edit v{next_version}",
+    )
+    db.add(version)
+
+    # Also write to disk (overwrite the original file)
+    paths = json.loads(job.output_subtitle_paths) if job.output_subtitle_paths else []
+    for p in paths:
+        if p.endswith(f".{req.format}"):
+            Path(p).write_text(content, encoding="utf-8")
+            break
+    else:
+        # If no matching format found, write as new file
+        output_dir = Path(settings.SUBTITLE_OUTPUT_DIR)
+        new_path = str(output_dir / f"{Path(job.input_path).stem}.{req.format}")
+        Path(new_path).write_text(content, encoding="utf-8")
+        paths.append(new_path)
+        crud.update_job(db, job_id, output_subtitle_paths=json.dumps(paths))
+
+    db.commit()
+
+    return {
+        "version": next_version,
+        "format": req.format,
+        "segment_count": len(req.segments),
+        "message": f"Subtitles updated (v{next_version})",
+    }
+
+
+@router.get("/{job_id}/subtitles/versions")
+def list_subtitle_versions(job_id: str, db: Session = Depends(get_db)):
+    """List all saved versions of subtitles for a job."""
+    job = crud.get_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    versions = (
+        db.query(SubtitleVersion)
+        .filter(SubtitleVersion.job_id == job_id)
+        .order_by(SubtitleVersion.version.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": v.id,
+            "version": v.version,
+            "format": v.format,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+            "description": v.description,
+        }
+        for v in versions
+    ]
+
+
+@router.get("/{job_id}/subtitles/versions/{version_id}")
+def get_subtitle_version(job_id: str, version_id: str, db: Session = Depends(get_db)):
+    """Get a specific subtitle version content."""
+    version = (
+        db.query(SubtitleVersion)
+        .filter(SubtitleVersion.id == version_id, SubtitleVersion.job_id == job_id)
+        .first()
+    )
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    segments = _parse_subtitle_content(version.content, version.format)
+    return {
+        "id": version.id,
+        "version": version.version,
+        "format": version.format,
+        "content": version.content,
+        "segments": segments,
+        "created_at": version.created_at.isoformat() if version.created_at else None,
+        "description": version.description,
+    }
+
+
+@router.post("/{job_id}/subtitles/versions/{version_id}/restore")
+def restore_subtitle_version(job_id: str, version_id: str, db: Session = Depends(get_db)):
+    """Restore a previous subtitle version."""
+    version = (
+        db.query(SubtitleVersion)
+        .filter(SubtitleVersion.id == version_id, SubtitleVersion.job_id == job_id)
+        .first()
+    )
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    job = crud.get_job(db, job_id)
+    paths = json.loads(job.output_subtitle_paths) if job.output_subtitle_paths else []
+
+    # Write restored content to disk
+    for p in paths:
+        if p.endswith(f".{version.format}"):
+            Path(p).write_text(version.content, encoding="utf-8")
+            break
+
+    return {"message": f"Restored version {version.version}", "version": version.version}
+
+
+@router.get("/{job_id}/audio")
+def stream_audio(job_id: str, db: Session = Depends(get_db)):
+    """Stream extracted audio for waveform display in editor."""
+    job = crud.get_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Check for cached audio file
+    temp_dir = Path(settings.TEMP_DIR)
+    input_stem = Path(job.input_path).stem
+    audio_path = temp_dir / f"{input_stem}_{job_id[:8]}.wav"
+
+    if not audio_path.exists():
+        # Extract audio on-demand
+        from backend.video.ffmpeg_wrapper import extract_audio
+        extracted = extract_audio(job.input_path)
+        # Move to predictable location
+        import shutil
+        shutil.move(extracted, str(audio_path))
+
+    if not audio_path.exists():
+        raise HTTPException(status_code=404, detail="Could not extract audio")
+
+    def iterfile():
+        with open(audio_path, "rb") as f:
+            while chunk := f.read(64 * 1024):
+                yield chunk
+
+    return StreamingResponse(
+        iterfile(),
+        media_type="audio/wav",
+        headers={"Content-Disposition": f"inline; filename={audio_path.name}"},
+    )
+
+
+# ---------- Helpers ----------
+
+def _parse_subtitle_file(path: str) -> list[dict]:
+    """Parse a subtitle file into structured segments."""
+    content = Path(path).read_text(encoding="utf-8")
+    fmt = Path(path).suffix.lstrip(".")
+    return _parse_subtitle_content(content, fmt)
+
+
+def _parse_subtitle_content(content: str, fmt: str) -> list[dict]:
+    """Parse subtitle content string into segments."""
+    if fmt == "srt":
+        return _parse_srt(content)
+    elif fmt == "vtt":
+        return _parse_vtt(content)
+    elif fmt == "ass":
+        return _parse_ass(content)
+    return []
+
+
+def _parse_srt(content: str) -> list[dict]:
+    """Parse SRT content into segments."""
+    import re
+    segments = []
+    blocks = re.split(r"\n\s*\n", content.strip())
+
+    for block in blocks:
+        lines = block.strip().split("\n")
+        if len(lines) < 3:
+            continue
+
+        # Parse index
+        try:
+            index = int(lines[0].strip())
+        except ValueError:
+            continue
+
+        # Parse timestamps
+        ts_match = re.match(
+            r"(\d{2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,\.]\d{3})",
+            lines[1].strip(),
+        )
+        if not ts_match:
+            continue
+
+        start = _srt_ts_to_seconds(ts_match.group(1))
+        end = _srt_ts_to_seconds(ts_match.group(2))
+
+        # Parse text (may be multiple lines)
+        text = "\n".join(lines[2:]).strip()
+
+        # Extract speaker if present: [Speaker 1]: text
+        speaker = None
+        speaker_match = re.match(r"\[([^\]]+)\]:\s*(.*)", text, re.DOTALL)
+        if speaker_match:
+            speaker = speaker_match.group(1)
+            text = speaker_match.group(2)
+
+        segments.append({
+            "index": index,
+            "start": start,
+            "end": end,
+            "text": text,
+            "speaker": speaker,
+        })
+
+    return segments
+
+
+def _parse_vtt(content: str) -> list[dict]:
+    """Parse VTT content into segments."""
+    import re
+    segments = []
+    # Remove WEBVTT header
+    content = re.sub(r"^WEBVTT[^\n]*\n\n?", "", content, flags=re.MULTILINE)
+    blocks = re.split(r"\n\s*\n", content.strip())
+
+    idx = 1
+    for block in blocks:
+        lines = block.strip().split("\n")
+        if not lines:
+            continue
+
+        # Find timestamp line
+        ts_line_idx = 0
+        for i, line in enumerate(lines):
+            if "-->" in line:
+                ts_line_idx = i
+                break
+        else:
+            continue
+
+        ts_match = re.match(
+            r"(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})",
+            lines[ts_line_idx].strip(),
+        )
+        if not ts_match:
+            continue
+
+        start = _vtt_ts_to_seconds(ts_match.group(1))
+        end = _vtt_ts_to_seconds(ts_match.group(2))
+        text = "\n".join(lines[ts_line_idx + 1:]).strip()
+
+        segments.append({
+            "index": idx,
+            "start": start,
+            "end": end,
+            "text": text,
+            "speaker": None,
+        })
+        idx += 1
+
+    return segments
+
+
+def _parse_ass(content: str) -> list[dict]:
+    """Parse ASS content into segments (dialogue events only)."""
+    import re
+    segments = []
+    idx = 1
+
+    for line in content.split("\n"):
+        line = line.strip()
+        if not line.startswith("Dialogue:"):
+            continue
+
+        # Dialogue: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+        parts = line[len("Dialogue:"):].split(",", 9)
+        if len(parts) < 10:
+            continue
+
+        start = _ass_ts_to_seconds(parts[1].strip())
+        end = _ass_ts_to_seconds(parts[2].strip())
+        speaker = parts[4].strip() or None
+        text = parts[9].strip()
+
+        # Remove ASS override tags
+        text = re.sub(r"\{[^}]*\}", "", text)
+        # Replace \N with newline
+        text = text.replace("\\N", "\n")
+
+        segments.append({
+            "index": idx,
+            "start": start,
+            "end": end,
+            "text": text,
+            "speaker": speaker,
+        })
+        idx += 1
+
+    return segments
+
+
+def _srt_ts_to_seconds(ts: str) -> float:
+    ts = ts.replace(",", ".")
+    parts = ts.split(":")
+    return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+
+
+def _vtt_ts_to_seconds(ts: str) -> float:
+    parts = ts.split(":")
+    return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+
+
+def _ass_ts_to_seconds(ts: str) -> float:
+    parts = ts.split(":")
+    return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+
+
+def _generate_subtitle_content(segments: list[SubtitleSegment], fmt: str) -> str:
+    """Generate subtitle file content from segments."""
+    if fmt == "srt":
+        return _generate_srt(segments)
+    elif fmt == "vtt":
+        return _generate_vtt(segments)
+    raise HTTPException(status_code=400, detail=f"Editing format '{fmt}' not supported. Use srt or vtt.")
+
+
+def _generate_srt(segments: list[SubtitleSegment]) -> str:
+    lines = []
+    for i, seg in enumerate(segments, 1):
+        start_ts = _seconds_to_srt_ts(seg.start)
+        end_ts = _seconds_to_srt_ts(seg.end)
+        text = seg.text
+        if seg.speaker:
+            text = f"[{seg.speaker}]: {text}"
+        lines.append(f"{i}\n{start_ts} --> {end_ts}\n{text}\n")
+    return "\n".join(lines)
+
+
+def _generate_vtt(segments: list[SubtitleSegment]) -> str:
+    lines = ["WEBVTT\n"]
+    for i, seg in enumerate(segments, 1):
+        start_ts = _seconds_to_vtt_ts(seg.start)
+        end_ts = _seconds_to_vtt_ts(seg.end)
+        text = seg.text
+        if seg.speaker:
+            text = f"<v {seg.speaker}>{text}"
+        lines.append(f"{i}\n{start_ts} --> {end_ts}\n{text}\n")
+    return "\n".join(lines)
+
+
+def _seconds_to_srt_ts(seconds: float) -> str:
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds % 1) * 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+def _seconds_to_vtt_ts(seconds: float) -> str:
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds % 1) * 1000)
+    return f"{h:02d}:{m:02d}:{s:02d}.{ms:03d}"

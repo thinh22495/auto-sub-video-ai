@@ -15,6 +15,7 @@ import {
   Globe,
   Cpu,
   Loader2,
+  Edit3,
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useState } from "react";
@@ -128,9 +129,18 @@ export default function JobDetailPage() {
       {/* Completed result */}
       {job.status === "COMPLETED" && (
         <div className="rounded-xl border border-success/30 bg-success/5 p-6">
-          <h2 className="mb-4 text-lg font-semibold text-success">
-            Transcription Complete
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-success">
+              Transcription Complete
+            </h2>
+            <Link
+              href={`/jobs/${jobId}/edit`}
+              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+            >
+              <Edit3 className="h-4 w-4" />
+              Edit Subtitles
+            </Link>
+          </div>
           <div className="space-y-3">
             {job.output_subtitle_paths?.map((path, i) => {
               const filename = path.split("/").pop() || path;

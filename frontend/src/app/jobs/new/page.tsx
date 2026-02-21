@@ -3,8 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
-import type { JobCreate } from "@/lib/types";
+import type { JobCreate, Preset, SubtitleStyle } from "@/lib/types";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { SubtitlePreview } from "@/components/SubtitlePreview";
+import { SubtitleStyler } from "@/components/SubtitleStyler";
+import { FileExplorer } from "@/components/FileExplorer";
 import {
   Play,
   FileVideo,
@@ -13,6 +16,10 @@ import {
   Settings2,
   Loader2,
   HardDrive,
+  Palette,
+  ChevronDown,
+  ChevronUp,
+  FolderOpen,
 } from "lucide-react";
 
 interface OllamaModelOption {
@@ -21,11 +28,31 @@ interface OllamaModelOption {
   parameter_size: string;
 }
 
+const DEFAULT_STYLE: SubtitleStyle = {
+  font_name: "Arial",
+  font_size: 24,
+  primary_color: "#FFFFFF",
+  secondary_color: "#FFFF00",
+  outline_color: "#000000",
+  shadow_color: "#000000",
+  outline_width: 2.0,
+  shadow_depth: 1.0,
+  alignment: 2,
+  margin_left: 10,
+  margin_right: 10,
+  margin_vertical: 30,
+  bold: false,
+  italic: false,
+  max_line_length: 42,
+  max_lines: 2,
+};
+
 export default function NewJobPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ollamaModels, setOllamaModels] = useState<OllamaModelOption[]>([]);
+  const [presets, setPresets] = useState<Preset[]>([]);
 
   // Form state
   const [inputPath, setInputPath] = useState("");
@@ -35,13 +62,17 @@ export default function NewJobPage() {
   const [burnIn, setBurnIn] = useState(false);
   const [whisperModel, setWhisperModel] = useState("large-v3-turbo");
   const [ollamaModel, setOllamaModel] = useState<string>("");
+  const [selectedPreset, setSelectedPreset] = useState<string>("");
+  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>(DEFAULT_STYLE);
+  const [showStyleEditor, setShowStyleEditor] = useState(false);
+  const [showFileBrowser, setShowFileBrowser] = useState(false);
 
   useEffect(() => {
+    // Load Ollama models and presets in parallel
     api
       .get<OllamaModelOption[]>("/models/ollama")
       .then((models) => {
         setOllamaModels(models);
-        // Auto-select default model if available
         const defaultModel = models.find((m) =>
           m.name.includes("qwen2.5")
         );
@@ -49,7 +80,24 @@ export default function NewJobPage() {
         else if (models.length > 0) setOllamaModel(models[0].name);
       })
       .catch(() => {});
+
+    api
+      .get<Preset[]>("/presets")
+      .then((data) => setPresets(data))
+      .catch(() => {});
   }, []);
+
+  const handlePresetChange = (presetId: string) => {
+    setSelectedPreset(presetId);
+    if (presetId) {
+      const preset = presets.find((p) => p.id === presetId);
+      if (preset) {
+        setSubtitleStyle({ ...DEFAULT_STYLE, ...preset.subtitle_style });
+      }
+    } else {
+      setSubtitleStyle(DEFAULT_STYLE);
+    }
+  };
 
   const toggleFormat = (fmt: string) => {
     setOutputFormats((prev) =>
@@ -78,6 +126,12 @@ export default function NewJobPage() {
     setError(null);
 
     try {
+      // Resolve preset key for backend (strip builtin_ prefix)
+      let videoPreset: string | undefined;
+      if (selectedPreset.startsWith("builtin_")) {
+        videoPreset = selectedPreset.replace("builtin_", "");
+      }
+
       const body: JobCreate = {
         input_path: inputPath.trim(),
         source_language: sourceLanguage === "auto" ? null : sourceLanguage,
@@ -86,6 +140,8 @@ export default function NewJobPage() {
         burn_in: burnIn,
         whisper_model: whisperModel,
         ollama_model: needsTranslation ? ollamaModel : undefined,
+        subtitle_style: subtitleStyle,
+        video_preset: videoPreset,
       };
 
       const job = await api.post<{ id: string }>("/jobs", body);
@@ -112,15 +168,40 @@ export default function NewJobPage() {
           <label className="block text-sm font-medium text-muted-foreground">
             Video File Path
           </label>
-          <input
-            type="text"
-            value={inputPath}
-            onChange={(e) => setInputPath(e.target.value)}
-            placeholder="/data/videos/my_video.mp4"
-            className="mt-1 w-full rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+          <div className="mt-1 flex gap-2">
+            <input
+              type="text"
+              value={inputPath}
+              onChange={(e) => setInputPath(e.target.value)}
+              placeholder="/data/videos/my_video.mp4"
+              className="flex-1 rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              type="button"
+              onClick={() => setShowFileBrowser(!showFileBrowser)}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                showFileBrowser
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-muted text-muted-foreground hover:border-foreground/30"
+              }`}
+            >
+              <FolderOpen className="h-4 w-4" />
+              Browse
+            </button>
+          </div>
+          {showFileBrowser && (
+            <div className="mt-3">
+              <FileExplorer
+                filterType="video"
+                onSelect={(path) => {
+                  setInputPath(path);
+                  setShowFileBrowser(false);
+                }}
+              />
+            </div>
+          )}
           <p className="mt-1 text-xs text-muted-foreground">
-            Path to the video file inside the Docker container (mounted at /data/videos/)
+            Select a video file or enter the path manually
           </p>
         </Section>
 
@@ -221,6 +302,51 @@ export default function NewJobPage() {
               </span>
             </label>
           </div>
+        </Section>
+
+        {/* Subtitle Style & Preset */}
+        <Section icon={<Palette className="h-5 w-5" />} title="Subtitle Style">
+          <label className="block text-sm font-medium text-muted-foreground">
+            Style Preset
+          </label>
+          <select
+            value={selectedPreset}
+            onChange={(e) => handlePresetChange(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="">Default</option>
+            {presets.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.is_builtin ? " (built-in)" : ""}
+              </option>
+            ))}
+          </select>
+
+          {/* Live Preview */}
+          <div className="mt-3 flex justify-center">
+            <SubtitlePreview style={subtitleStyle} width={560} height={200} />
+          </div>
+
+          {/* Expand/collapse style editor */}
+          <button
+            type="button"
+            onClick={() => setShowStyleEditor(!showStyleEditor)}
+            className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {showStyleEditor ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
+            {showStyleEditor ? "Hide" : "Show"} advanced style settings
+          </button>
+
+          {showStyleEditor && (
+            <div className="mt-3 rounded-lg border border-border bg-background p-4">
+              <SubtitleStyler style={subtitleStyle} onChange={setSubtitleStyle} />
+            </div>
+          )}
         </Section>
 
         {/* Whisper Model Settings */}

@@ -25,6 +25,7 @@ class SubtitlePipeline:
     """
 
     TOTAL_STEPS_BASE = 3  # extract + transcribe + generate
+    STEP_DIARIZE = 1
     STEP_TRANSLATE = 1
     STEP_BURNIN = 1
 
@@ -35,9 +36,11 @@ class SubtitlePipeline:
         target_language: str | None = None,
         output_formats: list[str] | None = None,
         burn_in: bool = False,
+        enable_diarization: bool = False,
         whisper_model: str = "large-v3-turbo",
         ollama_model: str | None = None,
         subtitle_style: dict | None = None,
+        video_preset: str | None = None,
         on_progress: ProgressCallback | None = None,
     ):
         self.input_path = input_path
@@ -45,13 +48,17 @@ class SubtitlePipeline:
         self.target_language = target_language
         self.output_formats = output_formats or ["srt"]
         self.burn_in = burn_in
+        self.enable_diarization = enable_diarization
         self.whisper_model = whisper_model
         self.ollama_model = ollama_model
         self.subtitle_style = subtitle_style
+        self.video_preset = video_preset
         self.on_progress = on_progress
 
         # Calculate total steps
         self.total_steps = self.TOTAL_STEPS_BASE
+        if enable_diarization:
+            self.total_steps += self.STEP_DIARIZE
         if target_language and target_language != source_language:
             self.total_steps += self.STEP_TRANSLATE
         if burn_in:
@@ -62,7 +69,7 @@ class SubtitlePipeline:
 
     def _report(self, percent: float, message: str):
         if self.on_progress:
-            step_names = ["Extracting audio", "Transcribing", "Translating", "Generating subtitles", "Burning subtitles"]
+            step_names = ["Extracting audio", "Transcribing", "Diarizing speakers", "Translating", "Generating subtitles", "Burning subtitles"]
             step_name = step_names[min(self._current_step, len(step_names) - 1)]
             self.on_progress(ProgressInfo(
                 step=step_name,
@@ -88,15 +95,19 @@ class SubtitlePipeline:
         # Step 2: Transcribe
         transcription = self._step_transcribe(audio_path)
 
-        # Step 3: Translate (optional)
+        # Step 3: Diarize (optional)
         segments = transcription.segments
+        if self.enable_diarization:
+            segments = self._step_diarize(audio_path, segments)
+
+        # Step 4: Translate (optional)
         if self.target_language and self.target_language != transcription.language:
             segments = self._step_translate(segments, transcription.language)
 
-        # Step 4: Generate subtitle files
+        # Step 5: Generate subtitle files
         subtitle_paths = self._step_generate_subtitles(segments, input_file.stem)
 
-        # Step 5: Burn in (optional)
+        # Step 6: Burn in (optional)
         output_video_path = None
         if self.burn_in and subtitle_paths:
             output_video_path = self._step_burn_in(subtitle_paths[0])
@@ -162,11 +173,35 @@ class SubtitlePipeline:
 
         return result
 
+    def _step_diarize(self, audio_path: str, segments: list[Segment]) -> list[Segment]:
+        from backend.core.diarizer import assign_speakers_to_segments, diarize_audio
+
+        self._current_step = 2
+        self._report(
+            (self._current_step / self.total_steps) * 100,
+            "Running speaker diarization...",
+        )
+
+        def on_diarize_progress(percent, msg):
+            base = (self._current_step / self.total_steps) * 100
+            step_range = (1 / self.total_steps) * 100
+            overall = base + (percent / 100) * step_range
+            self._report(overall, msg)
+
+        speaker_turns = diarize_audio(
+            audio_path=audio_path,
+            on_progress=on_diarize_progress,
+        )
+
+        segments = assign_speakers_to_segments(segments, speaker_turns)
+        return segments
+
     def _step_translate(self, segments: list[Segment], source_lang: str) -> list[Segment]:
         from backend.core.translator import translate_segments
         from backend.core.language_detector import LANGUAGE_NAMES
 
-        self._current_step = 2
+        # Dynamic step index: after transcribe(1), optionally diarize(2)
+        self._current_step = 2 + (1 if self.enable_diarization else 0)
         source_name = LANGUAGE_NAMES.get(source_lang, source_lang)
         target_name = LANGUAGE_NAMES.get(self.target_language, self.target_language)
 
@@ -194,7 +229,12 @@ class SubtitlePipeline:
     def _step_generate_subtitles(self, segments: list[Segment], base_name: str) -> list[str]:
         from backend.core.subtitle_generator import generate_subtitles
 
-        step_idx = 2 if not (self.target_language and self.target_language != self.source_language) else 3
+        # Dynamic step index: base(2) + diarize?(1) + translate?(1)
+        step_idx = 2
+        if self.enable_diarization:
+            step_idx += 1
+        if self.target_language and self.target_language != self.source_language:
+            step_idx += 1
         self._current_step = step_idx
         self._report(
             (self._current_step / self.total_steps) * 100,
@@ -215,6 +255,7 @@ class SubtitlePipeline:
                 format=fmt,
                 style=self.subtitle_style,
                 use_translated=use_translated,
+                preset_name=self.video_preset,
             )
             subtitle_paths.append(result_path)
 
@@ -245,10 +286,19 @@ class SubtitlePipeline:
             overall = base + (percent / 100) * step_range
             self._report(overall, msg)
 
+        # Resolve video encoding settings from preset
+        video_settings = None
+        if self.video_preset:
+            from backend.video.presets import get_builtin_preset
+            preset = get_builtin_preset(self.video_preset)
+            if preset:
+                video_settings = preset.get("video_settings")
+
         result_path = burn_subtitles(
             input_video=self.input_path,
             subtitle_file=subtitle_path,
             output_path=output_path,
+            video_settings=video_settings,
             on_progress=on_ffmpeg_progress,
         )
 

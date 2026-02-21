@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
@@ -29,6 +30,12 @@ DEFAULT_STYLE = {
     "max_line_length": 42,
     "max_lines": 2,
 }
+
+# Speaker color palette for per-speaker styling
+SPEAKER_COLORS = [
+    "#FFFFFF", "#00FFFF", "#FF69B4", "#7FFF00",
+    "#FFD700", "#FF6347", "#40E0D0", "#EE82EE",
+]
 
 
 def _hex_to_ssa_color(hex_color: str) -> Color:
@@ -70,12 +77,36 @@ def _wrap_text(text: str, max_length: int, max_lines: int) -> str:
     return "\n".join(lines[:max_lines])
 
 
+def resolve_style(style: dict | None = None, preset_name: str | None = None) -> dict:
+    """
+    Resolve the final subtitle style by merging defaults, preset, and overrides.
+
+    Priority: explicit style overrides > preset > defaults.
+    """
+    from backend.video.presets import get_builtin_preset
+
+    resolved = {**DEFAULT_STYLE}
+
+    # Apply preset if specified
+    if preset_name:
+        preset = get_builtin_preset(preset_name)
+        if preset and "subtitle_style" in preset:
+            resolved.update(preset["subtitle_style"])
+
+    # Apply explicit style overrides
+    if style:
+        resolved.update(style)
+
+    return resolved
+
+
 def generate_subtitles(
     segments: list[Segment],
     output_path: str,
     format: str = "srt",
     style: dict | None = None,
     use_translated: bool = False,
+    preset_name: str | None = None,
 ) -> str:
     """
     Generate a subtitle file from segments.
@@ -84,13 +115,14 @@ def generate_subtitles(
         segments: List of Segment objects.
         output_path: Output file path (extension will be adjusted).
         format: Output format ('srt', 'ass', 'vtt').
-        style: Style configuration dict (overrides defaults).
+        style: Style configuration dict (overrides defaults and preset).
         use_translated: Use translated_text if available.
+        preset_name: Name of a built-in preset to use as base style.
 
     Returns:
         Path to the generated subtitle file.
     """
-    style_config = {**DEFAULT_STYLE, **(style or {})}
+    style_config = resolve_style(style, preset_name)
     max_length = style_config["max_line_length"]
     max_lines = style_config["max_lines"]
 
@@ -101,8 +133,11 @@ def generate_subtitles(
 
     subs = SSAFile()
 
-    # Apply style for ASS format
+    # Set video resolution info for ASS (helps with rendering)
     if format == "ass":
+        subs.info["PlayResX"] = "1920"
+        subs.info["PlayResY"] = "1080"
+        subs.info["ScaledBorderAndShadow"] = "yes"
         subs.styles["Default"] = _create_ass_style(style_config)
 
     for seg in segments:
@@ -158,15 +193,11 @@ def _create_ass_style(config: dict, speaker: str | None = None) -> SSAStyle:
 
     # Assign different colors per speaker
     if speaker:
-        speaker_colors = [
-            "#FFFFFF", "#00FFFF", "#FF69B4", "#7FFF00",
-            "#FFD700", "#FF6347", "#40E0D0", "#EE82EE",
-        ]
         try:
             idx = int(speaker.split("_")[-1]) if "_" in speaker else hash(speaker)
         except (ValueError, IndexError):
             idx = hash(speaker)
-        color = speaker_colors[idx % len(speaker_colors)]
+        color = SPEAKER_COLORS[idx % len(SPEAKER_COLORS)]
         style.primarycolor = _hex_to_ssa_color(color)
 
     return style
