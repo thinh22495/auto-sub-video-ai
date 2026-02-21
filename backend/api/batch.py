@@ -19,18 +19,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/batch", tags=["batch"])
 
 
-# ---------- Pydantic Schemas ----------
+# ---------- Lược đồ Pydantic ----------
 
 class BatchFileConfig(BaseModel):
-    """Per-file overrides within a batch."""
+    """Cấu hình ghi đè cho từng file trong một batch."""
     input_path: str
-    source_language: Optional[str] = None  # override shared config
+    source_language: Optional[str] = None  # ghi đè cấu hình chung
 
 
 class BatchCreateRequest(BaseModel):
     name: Optional[str] = None
     files: list[BatchFileConfig] = Field(..., min_length=1)
-    # Shared config applied to all files
+    # Cấu hình chung áp dụng cho tất cả file
     target_language: Optional[str] = None
     output_formats: list[str] = Field(default=["srt"])
     burn_in: bool = False
@@ -54,7 +54,7 @@ class BatchResponse(BaseModel):
     jobs: list[dict] = []
 
 
-# ---------- Helpers ----------
+# ---------- Hàm hỗ trợ ----------
 
 def _batch_to_response(batch: Batch, include_jobs: bool = False, db: Session | None = None) -> dict:
     result = {
@@ -100,7 +100,7 @@ def _job_summary(job: Job) -> dict:
 
 
 def _update_batch_status(db: Session, batch_id: str):
-    """Recalculate batch status from its jobs."""
+    """Tính lại trạng thái batch từ các công việc của nó."""
     batch = db.query(Batch).filter(Batch.id == batch_id).first()
     if not batch:
         return
@@ -126,12 +126,12 @@ def _update_batch_status(db: Session, batch_id: str):
     db.commit()
 
 
-# ---------- Endpoints ----------
+# ---------- Các endpoint ----------
 
 @router.post("", status_code=202)
 def create_batch(req: BatchCreateRequest, db: Session = Depends(get_db)):
-    """Create a batch of subtitle generation jobs."""
-    # Validate files
+    """Tạo một batch các công việc tạo phụ đề."""
+    # Kiểm tra các file
     valid_formats = {"srt", "ass", "vtt"}
     for fmt in req.output_formats:
         if fmt not in valid_formats:
@@ -141,7 +141,7 @@ def create_batch(req: BatchCreateRequest, db: Session = Depends(get_db)):
         if not Path(fc.input_path).exists():
             raise HTTPException(status_code=400, detail=f"File not found: {fc.input_path}")
 
-    # Create batch
+    # Tạo batch
     batch = Batch(
         name=req.name or f"Batch ({len(req.files)} files)",
         status="QUEUED",
@@ -151,7 +151,7 @@ def create_batch(req: BatchCreateRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(batch)
 
-    # Create jobs for each file
+    # Tạo công việc cho từng file
     job_ids = []
     for fc in req.files:
         input_file = Path(fc.input_path)
@@ -175,7 +175,7 @@ def create_batch(req: BatchCreateRequest, db: Session = Depends(get_db)):
         db.refresh(job)
         job_ids.append(job.id)
 
-    # Dispatch all jobs to Celery
+    # Gửi tất cả công việc đến Celery
     from backend.tasks.tasks import run_pipeline
     for jid in job_ids:
         run_pipeline.apply_async(args=[jid], priority=req.priority)

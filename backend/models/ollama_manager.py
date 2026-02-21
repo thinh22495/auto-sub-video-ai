@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def list_models() -> list[dict]:
-    """List all models available in the Ollama instance."""
+    """Liệt kê tất cả mô hình có sẵn trong Ollama."""
     try:
         with httpx.Client(timeout=10) as client:
             resp = client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
@@ -34,19 +34,19 @@ def list_models() -> list[dict]:
         return models
 
     except httpx.ConnectError:
-        logger.warning("Cannot connect to Ollama at %s", settings.OLLAMA_BASE_URL)
+        logger.warning("Không thể kết nối Ollama tại %s", settings.OLLAMA_BASE_URL)
         return []
     except Exception as e:
-        logger.error("Failed to list Ollama models: %s", e)
+        logger.error("Không thể liệt kê mô hình Ollama: %s", e)
         return []
 
 
 def pull_model(model_name: str) -> Generator[dict, None, None]:
     """
-    Pull (download) a model from Ollama registry.
-    Yields progress updates as dicts.
+    Tải (pull) mô hình từ registry Ollama.
+    Trả về các cập nhật tiến trình dưới dạng dict.
     """
-    logger.info("Pulling Ollama model: %s", model_name)
+    logger.info("Đang tải mô hình Ollama: %s", model_name)
 
     with httpx.Client(timeout=None) as client:
         with client.stream(
@@ -75,7 +75,7 @@ def pull_model(model_name: str) -> Generator[dict, None, None]:
                     yield progress
 
                     if status == "success":
-                        logger.info("Ollama model pulled: %s", model_name)
+                        logger.info("Đã tải xong mô hình Ollama: %s", model_name)
                         return
 
                 except Exception:
@@ -83,19 +83,19 @@ def pull_model(model_name: str) -> Generator[dict, None, None]:
 
 
 def pull_model_sync(model_name: str) -> dict:
-    """Pull a model synchronously (blocking). Returns final status."""
+    """Tải mô hình đồng bộ (chặn). Trả về trạng thái cuối cùng."""
     last_progress = {"status": "unknown", "percent": 0}
     try:
         for progress in pull_model(model_name):
             last_progress = progress
         return {"name": model_name, "status": "success", **last_progress}
     except Exception as e:
-        logger.error("Failed to pull Ollama model %s: %s", model_name, e)
+        logger.error("Không thể tải mô hình Ollama %s: %s", model_name, e)
         return {"name": model_name, "status": "error", "error": str(e)}
 
 
 def delete_model(model_name: str) -> bool:
-    """Delete a model from Ollama."""
+    """Xóa mô hình khỏi Ollama."""
     try:
         with httpx.Client(timeout=30) as client:
             resp = client.delete(
@@ -103,21 +103,21 @@ def delete_model(model_name: str) -> bool:
                 json={"name": model_name},
             )
             if resp.status_code == 200:
-                logger.info("Deleted Ollama model: %s", model_name)
+                logger.info("Đã xóa mô hình Ollama: %s", model_name)
                 return True
             else:
                 logger.warning(
-                    "Failed to delete Ollama model %s: %d %s",
+                    "Không thể xóa mô hình Ollama %s: %d %s",
                     model_name, resp.status_code, resp.text,
                 )
                 return False
     except Exception as e:
-        logger.error("Failed to delete Ollama model %s: %s", model_name, e)
+        logger.error("Không thể xóa mô hình Ollama %s: %s", model_name, e)
         return False
 
 
 def get_model_info(model_name: str) -> dict | None:
-    """Get detailed info about a specific Ollama model."""
+    """Lấy thông tin chi tiết về một mô hình Ollama cụ thể."""
     try:
         with httpx.Client(timeout=10) as client:
             resp = client.post(
@@ -132,7 +132,7 @@ def get_model_info(model_name: str) -> dict | None:
 
 
 def check_health() -> dict:
-    """Check if Ollama service is healthy."""
+    """Kiểm tra dịch vụ Ollama có hoạt động không."""
     try:
         with httpx.Client(timeout=5) as client:
             resp = client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
@@ -144,41 +144,41 @@ def check_health() -> dict:
                 "model_count": model_count,
             }
     except httpx.ConnectError:
-        return {"status": "down", "url": settings.OLLAMA_BASE_URL, "error": "Connection refused"}
+        return {"status": "down", "url": settings.OLLAMA_BASE_URL, "error": "Từ chối kết nối"}
     except Exception as e:
         return {"status": "error", "url": settings.OLLAMA_BASE_URL, "error": str(e)}
 
 
-# Recommended models for translation
+# Các mô hình khuyên dùng cho dịch thuật
 RECOMMENDED_MODELS = [
     {
         "name": "qwen2.5:7b",
-        "description": "Best multilingual model. 29+ languages including Vietnamese, Japanese, Korean, Chinese.",
+        "description": "Mô hình đa ngôn ngữ tốt nhất. 29+ ngôn ngữ bao gồm tiếng Việt, Nhật, Hàn, Trung.",
         "size_gb": 4.7,
-        "languages": "multilingual (29+)",
+        "languages": "đa ngôn ngữ (29+)",
     },
     {
         "name": "qwen2.5:3b",
-        "description": "Lighter multilingual model. Good for systems with limited VRAM.",
+        "description": "Mô hình đa ngôn ngữ nhẹ hơn. Tốt cho hệ thống có VRAM hạn chế.",
         "size_gb": 2.0,
-        "languages": "multilingual (29+)",
+        "languages": "đa ngôn ngữ (29+)",
     },
     {
         "name": "llama3.1:8b",
-        "description": "Strong English-centric model. Good for EN translation tasks.",
+        "description": "Mô hình mạnh tập trung tiếng Anh. Tốt cho các tác vụ dịch sang tiếng Anh.",
         "size_gb": 4.7,
-        "languages": "English-focused, basic multilingual",
+        "languages": "tập trung tiếng Anh, đa ngôn ngữ cơ bản",
     },
     {
         "name": "mistral:7b",
-        "description": "Good for European languages. French, German, Spanish, Italian, etc.",
+        "description": "Tốt cho ngôn ngữ châu Âu. Pháp, Đức, Tây Ban Nha, Ý, v.v.",
         "size_gb": 4.1,
-        "languages": "European languages",
+        "languages": "ngôn ngữ châu Âu",
     },
     {
         "name": "gemma2:9b",
-        "description": "Google's model. Good general multilingual performance.",
+        "description": "Mô hình Google. Hiệu suất đa ngôn ngữ tổng quát tốt.",
         "size_gb": 5.4,
-        "languages": "multilingual",
+        "languages": "đa ngôn ngữ",
     },
 ]

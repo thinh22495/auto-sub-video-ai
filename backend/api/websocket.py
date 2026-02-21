@@ -20,11 +20,11 @@ router = APIRouter(tags=["websocket"])
 @router.websocket("/ws/jobs/{job_id}")
 async def job_progress_ws(websocket: WebSocket, job_id: str):
     """
-    WebSocket endpoint for real-time job progress.
+    Endpoint WebSocket cho tiến trình công việc thời gian thực.
 
-    Subscribes to Redis pub/sub channel for the job and forwards
-    progress events to the client. Sends the latest cached progress
-    on connect for late-joining clients.
+    Đăng ký kênh Redis pub/sub cho công việc và chuyển tiếp
+    sự kiện tiến trình đến client. Gửi tiến trình mới nhất đã cache
+    khi kết nối cho client tham gia muộn.
     """
     await websocket.accept()
 
@@ -65,9 +65,9 @@ async def job_progress_ws(websocket: WebSocket, job_id: str):
                 break
 
     except WebSocketDisconnect:
-        logger.debug("WebSocket disconnected for job %s", job_id)
+        logger.debug("WebSocket ngắt kết nối cho công việc %s", job_id)
     except Exception as e:
-        logger.error("WebSocket error for job %s: %s", job_id, e)
+        logger.error("Lỗi WebSocket cho công việc %s: %s", job_id, e)
     finally:
         await pubsub.unsubscribe(f"job:{job_id}:progress")
         await pubsub.close()
@@ -77,10 +77,10 @@ async def job_progress_ws(websocket: WebSocket, job_id: str):
 @router.websocket("/ws/batch/{batch_id}")
 async def batch_progress_ws(websocket: WebSocket, batch_id: str):
     """
-    WebSocket endpoint for real-time batch progress.
+    Endpoint WebSocket cho tiến trình batch thời gian thực.
 
-    Subscribes to all job channels within the batch and sends
-    aggregate progress updates to the client.
+    Đăng ký tất cả kênh công việc trong batch và gửi
+    cập nhật tiến trình tổng hợp đến client.
     """
     await websocket.accept()
 
@@ -89,7 +89,7 @@ async def batch_progress_ws(websocket: WebSocket, batch_id: str):
     try:
         batch = db.query(Batch).filter(Batch.id == batch_id).first()
         if not batch:
-            await websocket.send_json({"error": "Batch not found"})
+            await websocket.send_json({"error": "Không tìm thấy batch"})
             await websocket.close()
             return
 
@@ -99,7 +99,7 @@ async def batch_progress_ws(websocket: WebSocket, batch_id: str):
         db.close()
 
     if not job_ids:
-        await websocket.send_json({"error": "No jobs in batch"})
+        await websocket.send_json({"error": "Batch không có công việc nào"})
         await websocket.close()
         return
 
@@ -142,9 +142,9 @@ async def batch_progress_ws(websocket: WebSocket, batch_id: str):
                 break
 
     except WebSocketDisconnect:
-        logger.debug("WebSocket disconnected for batch %s", batch_id)
+        logger.debug("WebSocket ngắt kết nối cho batch %s", batch_id)
     except Exception as e:
-        logger.error("WebSocket error for batch %s: %s", batch_id, e)
+        logger.error("Lỗi WebSocket cho batch %s: %s", batch_id, e)
     finally:
         for jid in job_ids:
             await pubsub.unsubscribe(f"job:{jid}:progress")
@@ -153,7 +153,7 @@ async def batch_progress_ws(websocket: WebSocket, batch_id: str):
 
 
 async def _send_batch_progress(websocket: WebSocket, batch_id: str, job_ids: list[str]):
-    """Calculate and send aggregate batch progress."""
+    """Tính toán và gửi tiến trình tổng hợp của batch."""
     job_progresses = []
     for jid in job_ids:
         latest = get_latest_progress(jid)

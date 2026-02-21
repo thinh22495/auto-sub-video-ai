@@ -11,7 +11,7 @@ engine = create_engine(
 )
 
 
-# Enable WAL mode for better concurrent read performance
+# Bật chế độ WAL để cải thiện hiệu suất đọc đồng thời
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()

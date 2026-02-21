@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 @functools.lru_cache(maxsize=1)
 def detect_gpu() -> dict:
-    """Detect NVIDIA GPU availability and capabilities. Result is cached."""
+    """Phát hiện GPU NVIDIA khả dụng và khả năng. Kết quả được lưu cache."""
     try:
         result = subprocess.run(
             [
@@ -30,20 +30,20 @@ def detect_gpu() -> dict:
                 "vram_free_mb": int(parts[2]) if len(parts) > 2 else 0,
                 "driver_version": parts[3] if len(parts) > 3 else "Unknown",
             }
-            logger.info("GPU detected: %s (%dMB VRAM)", info["name"], info["vram_total_mb"])
+            logger.info("Phát hiện GPU: %s (%dMB VRAM)", info["name"], info["vram_total_mb"])
             return info
     except FileNotFoundError:
-        logger.info("nvidia-smi not found - running in CPU mode")
+        logger.info("Không tìm thấy nvidia-smi - chạy chế độ CPU")
     except subprocess.TimeoutExpired:
-        logger.warning("nvidia-smi timed out")
+        logger.warning("nvidia-smi hết thời gian chờ")
     except Exception as e:
-        logger.warning("GPU detection failed: %s", e)
+        logger.warning("Phát hiện GPU thất bại: %s", e)
 
     return {"available": False}
 
 
 def get_whisper_device() -> str:
-    """Return the best device for Whisper: 'cuda' or 'cpu'."""
+    """Trả về thiết bị tốt nhất cho Whisper: 'cuda' hoặc 'cpu'."""
     from backend.config.settings import settings
 
     if settings.WHISPER_DEVICE != "auto":
@@ -54,7 +54,7 @@ def get_whisper_device() -> str:
 
 
 def get_whisper_compute_type() -> str:
-    """Return the best compute type based on hardware."""
+    """Trả về loại tính toán tốt nhất dựa trên phần cứng."""
     from backend.config.settings import settings
 
     if settings.WHISPER_COMPUTE_TYPE != "auto":
@@ -65,7 +65,7 @@ def get_whisper_compute_type() -> str:
 
 
 def get_ffmpeg_encoder() -> str:
-    """Return the best video encoder: 'h264_nvenc' or 'libx264'."""
+    """Trả về bộ mã hóa video tốt nhất: 'h264_nvenc' hoặc 'libx264'."""
     gpu = detect_gpu()
     if not gpu["available"]:
         return "libx264"
@@ -87,7 +87,7 @@ def get_ffmpeg_encoder() -> str:
 
 
 def get_ffmpeg_decoder() -> str:
-    """Return the best H.264 decoder: 'h264_cuvid' or default."""
+    """Trả về bộ giải mã H.264 tốt nhất: 'h264_cuvid' hoặc mặc định."""
     gpu = detect_gpu()
     if not gpu["available"]:
         return "h264"

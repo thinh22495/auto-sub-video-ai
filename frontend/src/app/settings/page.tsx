@@ -36,13 +36,13 @@ interface DiskInfo {
 
 const CATEGORY_META: Record<string, { icon: React.ReactNode; label: string }> =
   {
-    models: { icon: <Cpu className="h-4 w-4" />, label: "AI Models" },
+    models: { icon: <Cpu className="h-4 w-4" />, label: "Mô hình AI" },
     subtitles: {
       icon: <Subtitles className="h-4 w-4" />,
-      label: "Subtitle Defaults",
+      label: "Phụ đề mặc định",
     },
-    processing: { icon: <Cog className="h-4 w-4" />, label: "Processing" },
-    cleanup: { icon: <Trash2 className="h-4 w-4" />, label: "Cleanup" },
+    processing: { icon: <Cog className="h-4 w-4" />, label: "Xử lý" },
+    cleanup: { icon: <Trash2 className="h-4 w-4" />, label: "Dọn dẹp" },
   };
 
 export default function SettingsPage() {
@@ -138,7 +138,7 @@ export default function SettingsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>
           <p className="text-sm text-muted-foreground">
-            Configure output directories, defaults, and application settings
+            Cấu hình thư mục đầu ra, mặc định và cài đặt ứng dụng
           </p>
         </div>
         <div className="flex gap-2">
@@ -147,7 +147,7 @@ export default function SettingsPage() {
             className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
           >
             <RotateCcw className="h-4 w-4" />
-            Reset
+            Đặt lại
           </button>
           <button
             onClick={handleSave}
@@ -166,7 +166,7 @@ export default function SettingsPage() {
             ) : (
               <Save className="h-4 w-4" />
             )}
-            {saved ? "Saved" : "Save Changes"}
+            {saved ? "Đã lưu" : "Lưu thay đổi"}
           </button>
         </div>
       </div>
@@ -207,36 +207,36 @@ export default function SettingsPage() {
           <span className="text-primary">
             <FolderOpen className="h-4 w-4" />
           </span>
-          Directories
+          Thư mục
           <span className="text-xs font-normal text-muted-foreground">
-            (configured via .env — read only)
+            (cấu hình qua .env — chỉ đọc)
           </span>
         </h2>
         {dirInfo && (
           <div className="space-y-3">
             {[
               {
-                label: "Video Input",
+                label: "Video đầu vào",
                 path: dirInfo.video_input_dir,
                 disk: diskUsage?.videos,
               },
               {
-                label: "Subtitle Output",
+                label: "Phụ đề đầu ra",
                 path: dirInfo.subtitle_output_dir,
                 disk: diskUsage?.subtitles,
               },
               {
-                label: "Video Output",
+                label: "Video đầu ra",
                 path: dirInfo.video_output_dir,
                 disk: diskUsage?.output,
               },
               {
-                label: "Models",
+                label: "Mô hình",
                 path: dirInfo.model_dir,
                 disk: diskUsage?.models,
               },
-              { label: "Temp", path: dirInfo.temp_dir },
-              { label: "Database", path: dirInfo.db_path },
+              { label: "Tạm thời", path: dirInfo.temp_dir },
+              { label: "Cơ sở dữ liệu", path: dirInfo.db_path },
             ].map((dir) => (
               <div key={dir.label} className="flex items-center gap-3">
                 <span className="w-28 text-xs font-medium text-muted-foreground">
@@ -261,7 +261,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     <span className="text-[10px] text-muted-foreground">
-                      {dir.disk.free_gb}GB free
+                      {dir.disk.free_gb}GB trống
                     </span>
                   </div>
                 )}
@@ -277,11 +277,11 @@ export default function SettingsPage() {
           <span className="text-primary">
             <HardDrive className="h-4 w-4" />
           </span>
-          System
+          Hệ thống
         </h2>
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div className="rounded-lg border border-border bg-muted p-3">
-            <div className="text-muted-foreground">Version</div>
+            <div className="text-muted-foreground">Phiên bản</div>
             <div className="mt-0.5 font-medium text-foreground">
               AutoSubAI v0.1.0
             </div>

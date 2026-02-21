@@ -22,7 +22,7 @@ def extract_audio(
     sample_rate: int = 16000,
     on_progress: ProgressCallback | None = None,
 ) -> str:
-    """Extract audio from video as 16kHz mono WAV for Whisper."""
+    """Trích xuất âm thanh từ video thành WAV mono 16kHz cho Whisper."""
     input_file = Path(input_path)
     if not input_file.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
@@ -47,7 +47,7 @@ def extract_audio(
         output_path,
     ]
 
-    logger.info("Extracting audio: %s -> %s", input_path, output_path)
+    logger.info("Đang trích xuất âm thanh: %s -> %s", input_path, output_path)
 
     process = subprocess.Popen(
         cmd,
@@ -65,7 +65,7 @@ def extract_audio(
         stderr = process.stderr.read() if process.stderr else ""
         raise RuntimeError(f"FFmpeg audio extraction failed (code {process.returncode}): {stderr[:500]}")
 
-    logger.info("Audio extraction complete: %s", output_path)
+    logger.info("Trích xuất âm thanh hoàn tất: %s", output_path)
     return output_path
 
 
@@ -77,14 +77,14 @@ def burn_subtitles(
     on_progress: ProgressCallback | None = None,
 ) -> str:
     """
-    Burn subtitles into video using libass filter.
+    Ghi phụ đề vào video sử dụng bộ lọc libass.
 
     Args:
-        input_video: Path to the input video.
-        subtitle_file: Path to the subtitle file (.srt, .ass, .vtt).
-        output_path: Path for the output video.
-        video_settings: Optional encoding settings (crf, preset).
-        on_progress: Progress callback function.
+        input_video: Đường dẫn video đầu vào.
+        subtitle_file: Đường dẫn tệp phụ đề (.srt, .ass, .vtt).
+        output_path: Đường dẫn video đầu ra.
+        video_settings: Cài đặt mã hóa tùy chọn (crf, preset).
+        on_progress: Hàm callback tiến trình.
     """
     input_file = Path(input_video)
     sub_file = Path(subtitle_file)
@@ -132,7 +132,7 @@ def burn_subtitles(
 
     cmd.extend(["-progress", "pipe:1", output_path])
 
-    logger.info("Burning subtitles: %s + %s -> %s (encoder: %s, crf=%s, preset=%s)",
+    logger.info("Đang ghi phụ đề: %s + %s -> %s (encoder: %s, crf=%s, preset=%s)",
                 input_video, subtitle_file, output_path, encoder, crf, enc_preset)
 
     process = subprocess.Popen(
@@ -151,12 +151,12 @@ def burn_subtitles(
         stderr = process.stderr.read() if process.stderr else ""
         raise RuntimeError(f"FFmpeg burn-in failed (code {process.returncode}): {stderr[:500]}")
 
-    logger.info("Subtitle burn-in complete: %s", output_path)
+    logger.info("Ghi phụ đề hoàn tất: %s", output_path)
     return output_path
 
 
 def _map_preset_to_nvenc(preset: str) -> str:
-    """Map x264 preset names to NVENC equivalents."""
+    """Ánh xạ tên preset x264 sang tương đương NVENC."""
     mapping = {
         "ultrafast": "p1",
         "superfast": "p2",
@@ -172,7 +172,7 @@ def _map_preset_to_nvenc(preset: str) -> str:
 
 
 def get_duration(file_path: str) -> float:
-    """Get media duration in seconds using ffprobe."""
+    """Lấy thời lượng media tính bằng giây sử dụng ffprobe."""
     try:
         result = subprocess.run(
             [
@@ -195,7 +195,7 @@ def get_duration(file_path: str) -> float:
 
 
 def get_video_info(file_path: str) -> dict:
-    """Get detailed video information using ffprobe."""
+    """Lấy thông tin chi tiết video sử dụng ffprobe."""
     try:
         result = subprocess.run(
             [
@@ -265,7 +265,7 @@ def get_video_info(file_path: str) -> dict:
 
 
 def _parse_fps(rate_str: str) -> float:
-    """Parse ffprobe frame rate string like '30000/1001'."""
+    """Phân tích chuỗi tốc độ khung hình ffprobe như '30000/1001'."""
     try:
         if "/" in rate_str:
             num, den = rate_str.split("/")
@@ -281,7 +281,7 @@ def _parse_ffmpeg_progress(
     on_progress: ProgressCallback,
     step_name: str,
 ):
-    """Parse ffmpeg progress output and call callback."""
+    """Phân tích đầu ra tiến trình ffmpeg và gọi callback."""
     time_pattern = re.compile(r"out_time_us=(\d+)")
 
     for line in stdout:

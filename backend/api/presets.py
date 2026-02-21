@@ -1,4 +1,4 @@
-"""Preset CRUD API endpoints."""
+"""Các endpoint API CRUD mẫu cài đặt."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ class PresetUpdateRequest(BaseModel):
 # ---------- Helpers ----------
 
 def _preset_to_dict(preset: Preset) -> dict:
-    """Convert a Preset ORM model to a response dict."""
+    """Chuyển đổi model ORM Preset thành dict phản hồi."""
     style = preset.subtitle_style
     if isinstance(style, str):
         try:
@@ -89,7 +89,7 @@ def _preset_to_dict(preset: Preset) -> dict:
 
 @router.get("")
 def list_presets(db: Session = Depends(get_db)):
-    """List all presets (built-in + user-created)."""
+    """Liệt kê tất cả mẫu (có sẵn + người dùng tạo)."""
     builtins = list_builtin_presets()
 
     user_presets = db.query(Preset).order_by(Preset.name).all()
@@ -100,34 +100,34 @@ def list_presets(db: Session = Depends(get_db)):
 
 @router.get("/builtin")
 def get_builtin_presets():
-    """List only built-in presets."""
+    """Liệt kê chỉ các mẫu có sẵn."""
     return list_builtin_presets()
 
 
 @router.get("/{preset_id}")
 def get_preset(preset_id: str, db: Session = Depends(get_db)):
-    """Get a specific preset by ID."""
+    """Lấy mẫu cụ thể theo ID."""
     # Check built-in presets first
     if preset_id.startswith("builtin_"):
         for bp in list_builtin_presets():
             if bp["id"] == preset_id:
                 return bp
-        raise HTTPException(status_code=404, detail="Built-in preset not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy mẫu có sẵn")
 
     preset = db.query(Preset).filter(Preset.id == preset_id).first()
     if not preset:
-        raise HTTPException(status_code=404, detail="Preset not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy mẫu")
 
     return _preset_to_dict(preset)
 
 
 @router.post("", status_code=201)
 def create_preset(req: PresetCreateRequest, db: Session = Depends(get_db)):
-    """Create a new user preset."""
+    """Tạo mẫu người dùng mới."""
     # Check for duplicate name
     existing = db.query(Preset).filter(Preset.name == req.name).first()
     if existing:
-        raise HTTPException(status_code=409, detail=f"Preset with name '{req.name}' already exists")
+        raise HTTPException(status_code=409, detail=f"Mẫu có tên '{req.name}' đã tồn tại")
 
     preset = Preset(
         id=generate_uuid(),
@@ -148,22 +148,22 @@ def create_preset(req: PresetCreateRequest, db: Session = Depends(get_db)):
 
 @router.put("/{preset_id}")
 def update_preset(preset_id: str, req: PresetUpdateRequest, db: Session = Depends(get_db)):
-    """Update an existing user preset."""
+    """Cập nhật mẫu người dùng hiện có."""
     if preset_id.startswith("builtin_"):
-        raise HTTPException(status_code=403, detail="Cannot modify built-in presets")
+        raise HTTPException(status_code=403, detail="Không thể sửa mẫu có sẵn")
 
     preset = db.query(Preset).filter(Preset.id == preset_id).first()
     if not preset:
-        raise HTTPException(status_code=404, detail="Preset not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy mẫu")
 
     if preset.is_builtin:
-        raise HTTPException(status_code=403, detail="Cannot modify built-in presets")
+        raise HTTPException(status_code=403, detail="Không thể sửa mẫu có sẵn")
 
     if req.name is not None:
         # Check for duplicate name (excluding current preset)
         existing = db.query(Preset).filter(Preset.name == req.name, Preset.id != preset_id).first()
         if existing:
-            raise HTTPException(status_code=409, detail=f"Preset with name '{req.name}' already exists")
+            raise HTTPException(status_code=409, detail=f"Mẫu có tên '{req.name}' đã tồn tại")
         preset.name = req.name
 
     if req.description is not None:
@@ -186,27 +186,27 @@ def update_preset(preset_id: str, req: PresetUpdateRequest, db: Session = Depend
 
 @router.delete("/{preset_id}")
 def delete_preset(preset_id: str, db: Session = Depends(get_db)):
-    """Delete a user preset."""
+    """Xóa mẫu người dùng."""
     if preset_id.startswith("builtin_"):
-        raise HTTPException(status_code=403, detail="Cannot delete built-in presets")
+        raise HTTPException(status_code=403, detail="Không thể xóa mẫu có sẵn")
 
     preset = db.query(Preset).filter(Preset.id == preset_id).first()
     if not preset:
-        raise HTTPException(status_code=404, detail="Preset not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy mẫu")
 
     if preset.is_builtin:
-        raise HTTPException(status_code=403, detail="Cannot delete built-in presets")
+        raise HTTPException(status_code=403, detail="Không thể xóa mẫu có sẵn")
 
     db.delete(preset)
     db.commit()
 
     logger.info("Deleted preset: %s (%s)", preset.name, preset_id)
-    return {"message": "Preset deleted", "id": preset_id}
+    return {"message": "Đã xóa mẫu", "id": preset_id}
 
 
 @router.post("/{preset_id}/duplicate", status_code=201)
 def duplicate_preset(preset_id: str, db: Session = Depends(get_db)):
-    """Duplicate a preset (built-in or user) as a new user preset."""
+    """Nhân bản mẫu (có sẵn hoặc người dùng) thành mẫu người dùng mới."""
     source = None
 
     # Check built-in presets
@@ -216,20 +216,20 @@ def duplicate_preset(preset_id: str, db: Session = Depends(get_db)):
                 source = bp
                 break
         if not source:
-            raise HTTPException(status_code=404, detail="Built-in preset not found")
+            raise HTTPException(status_code=404, detail="Không tìm thấy mẫu có sẵn")
     else:
         preset = db.query(Preset).filter(Preset.id == preset_id).first()
         if not preset:
-            raise HTTPException(status_code=404, detail="Preset not found")
+            raise HTTPException(status_code=404, detail="Không tìm thấy mẫu")
         source = _preset_to_dict(preset)
 
     # Generate a unique name
-    base_name = f"{source['name']} (Copy)"
+    base_name = f"{source['name']} (Bản sao)"
     name = base_name
     counter = 1
     while db.query(Preset).filter(Preset.name == name).first():
         counter += 1
-        name = f"{source['name']} (Copy {counter})"
+        name = f"{source['name']} (Bản sao {counter})"
 
     new_preset = Preset(
         id=generate_uuid(),

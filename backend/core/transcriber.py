@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 ProgressCallback = Callable[[float, str], None]
 
-# Cache loaded model to avoid reloading
+# Cache model đã tải để tránh tải lại
 _model_cache: dict[str, object] = {}
 
 
 def _get_model(model_name: str):
-    """Load a faster-whisper model (cached)."""
+    """Tải model faster-whisper (có cache)."""
     from faster_whisper import WhisperModel
 
     cache_key = f"{model_name}_{get_whisper_device()}_{get_whisper_compute_type()}"
@@ -43,16 +43,16 @@ def transcribe(
     on_progress: ProgressCallback | None = None,
 ) -> TranscriptionResult:
     """
-    Transcribe an audio file using faster-whisper.
+    Phiên âm tệp âm thanh sử dụng faster-whisper.
 
-    Args:
-        audio_path: Path to audio file (WAV recommended).
-        model_name: Whisper model name.
-        language: Source language ISO code (None = auto-detect).
-        on_progress: Callback(percent, message).
+    Tham số:
+        audio_path: Đường dẫn đến tệp âm thanh (khuyến nghị WAV).
+        model_name: Tên model Whisper.
+        language: Mã ngôn ngữ ISO nguồn (None = tự động nhận diện).
+        on_progress: Callback(phần trăm, thông báo).
 
-    Returns:
-        TranscriptionResult with segments and detected language.
+    Trả về:
+        TranscriptionResult chứa các đoạn và ngôn ngữ được nhận diện.
     """
     model = _get_model(model_name)
 
@@ -61,7 +61,7 @@ def transcribe(
 
     start_time = time.time()
 
-    # Run transcription
+    # Chạy phiên âm
     segments_iter, info = model.transcribe(
         audio_path,
         language=language,
@@ -86,7 +86,7 @@ def transcribe(
     if on_progress:
         on_progress(5, f"Language detected: {detected_language} ({language_confidence:.0%})")
 
-    # Collect segments with progress tracking
+    # Thu thập các đoạn với theo dõi tiến trình
     result_segments: list[Segment] = []
 
     for segment in segments_iter:
@@ -111,7 +111,7 @@ def transcribe(
             )
         )
 
-        # Report progress based on time position
+        # Báo cáo tiến trình dựa trên vị trí thời gian
         if on_progress and total_duration > 0:
             percent = min((segment.end / total_duration) * 90 + 5, 95)
             on_progress(

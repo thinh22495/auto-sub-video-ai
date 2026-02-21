@@ -156,17 +156,17 @@ export default function NewJobPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">New Subtitle Job</h1>
+        <h1 className="text-2xl font-bold text-foreground">Tạo phụ đề mới</h1>
         <p className="text-sm text-muted-foreground">
-          Configure and start a new subtitle generation job
+          Cấu hình và bắt đầu tạo phụ đề cho video
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Input File */}
-        <Section icon={<FileVideo className="h-5 w-5" />} title="Input Video">
+        <Section icon={<FileVideo className="h-5 w-5" />} title="Video đầu vào">
           <label className="block text-sm font-medium text-muted-foreground">
-            Video File Path
+            Đường dẫn file video
           </label>
           <div className="mt-1 flex gap-2">
             <input
@@ -186,7 +186,7 @@ export default function NewJobPage() {
               }`}
             >
               <FolderOpen className="h-4 w-4" />
-              Browse
+              Duyệt
             </button>
           </div>
           {showFileBrowser && (
@@ -201,30 +201,30 @@ export default function NewJobPage() {
             </div>
           )}
           <p className="mt-1 text-xs text-muted-foreground">
-            Select a video file or enter the path manually
+            Chọn file video hoặc nhập đường dẫn thủ công
           </p>
         </Section>
 
         {/* Language Settings */}
-        <Section icon={<Languages className="h-5 w-5" />} title="Language">
+        <Section icon={<Languages className="h-5 w-5" />} title="Ngôn ngữ">
           <div className="grid grid-cols-2 gap-4">
             <LanguageSelector
               value={sourceLanguage}
               onChange={setSourceLanguage}
-              label="Source Language"
+              label="Ngôn ngữ nguồn"
               allowAuto
             />
             <LanguageSelector
               value={targetLanguage}
               onChange={setTargetLanguage}
-              label="Target Language (Translation)"
+              label="Ngôn ngữ đích (Dịch thuật)"
               allowNone
-              noneLabel="No translation"
+              noneLabel="Không dịch"
             />
           </div>
           {needsTranslation && (
             <p className="text-xs text-accent">
-              Translation enabled: subtitles will be translated via Ollama
+              Đã bật dịch thuật: phụ đề sẽ được dịch qua Ollama
             </p>
           )}
         </Section>
@@ -233,20 +233,20 @@ export default function NewJobPage() {
         {needsTranslation && (
           <Section
             icon={<HardDrive className="h-5 w-5" />}
-            title="Translation Model"
+            title="Mô hình dịch thuật"
           >
             {ollamaModels.length === 0 ? (
               <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
-                No Ollama models installed. Go to the{" "}
+                Chưa cài đặt mô hình Ollama nào. Truy cập{" "}
                 <a href="/models/" className="underline">
-                  Models page
+                  trang Mô hình
                 </a>{" "}
-                to download a translation model first.
+                để tải mô hình dịch thuật trước.
               </div>
             ) : (
               <>
                 <label className="block text-sm font-medium text-muted-foreground">
-                  Ollama Model
+                  Mô hình Ollama
                 </label>
                 <select
                   value={ollamaModel}
@@ -266,10 +266,10 @@ export default function NewJobPage() {
         )}
 
         {/* Output Settings */}
-        <Section icon={<Subtitles className="h-5 w-5" />} title="Output">
+        <Section icon={<Subtitles className="h-5 w-5" />} title="Đầu ra">
           <div>
             <label className="mb-2 block text-sm font-medium text-muted-foreground">
-              Subtitle Formats
+              Định dạng phụ đề
             </label>
             <div className="flex gap-3">
               {["srt", "ass", "vtt"].map((fmt) => (
@@ -298,27 +298,27 @@ export default function NewJobPage() {
                 className="h-4 w-4 rounded border-border bg-muted text-primary focus:ring-primary"
               />
               <span className="text-sm text-foreground">
-                Also generate video with burned-in subtitles
+                Đồng thời tạo video có gắn phụ đề
               </span>
             </label>
           </div>
         </Section>
 
         {/* Subtitle Style & Preset */}
-        <Section icon={<Palette className="h-5 w-5" />} title="Subtitle Style">
+        <Section icon={<Palette className="h-5 w-5" />} title="Kiểu phụ đề">
           <label className="block text-sm font-medium text-muted-foreground">
-            Style Preset
+            Mẫu kiểu có sẵn
           </label>
           <select
             value={selectedPreset}
             onChange={(e) => handlePresetChange(e.target.value)}
             className="mt-1 w-full rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="">Default</option>
+            <option value="">Mặc định</option>
             {presets.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
-                {p.is_builtin ? " (built-in)" : ""}
+                {p.is_builtin ? " (có sẵn)" : ""}
               </option>
             ))}
           </select>
@@ -339,7 +339,7 @@ export default function NewJobPage() {
             ) : (
               <ChevronDown className="h-3.5 w-3.5" />
             )}
-            {showStyleEditor ? "Hide" : "Show"} advanced style settings
+            {showStyleEditor ? "Ẩn" : "Hiện"} tùy chọn kiểu nâng cao
           </button>
 
           {showStyleEditor && (
@@ -350,23 +350,23 @@ export default function NewJobPage() {
         </Section>
 
         {/* Whisper Model Settings */}
-        <Section icon={<Settings2 className="h-5 w-5" />} title="Whisper Model">
+        <Section icon={<Settings2 className="h-5 w-5" />} title="Mô hình Whisper">
           <label className="block text-sm font-medium text-muted-foreground">
-            Speech-to-Text Model
+            Mô hình chuyển giọng nói thành văn bản
           </label>
           <select
             value={whisperModel}
             onChange={(e) => setWhisperModel(e.target.value)}
             className="mt-1 w-full rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="tiny">tiny - Fastest, lowest accuracy (~75MB)</option>
-            <option value="base">base - Fast, low accuracy (~142MB)</option>
-            <option value="small">small - Moderate speed, medium accuracy (~466MB)</option>
-            <option value="medium">medium - Slower, good accuracy (~1.5GB)</option>
-            <option value="large-v2">large-v2 - Slow, excellent accuracy (~3.1GB)</option>
-            <option value="large-v3">large-v3 - Slow, excellent accuracy (~3.1GB)</option>
+            <option value="tiny">tiny - Nhanh nhất, độ chính xác thấp nhất (~75MB)</option>
+            <option value="base">base - Nhanh, độ chính xác thấp (~142MB)</option>
+            <option value="small">small - Tốc độ vừa phải, độ chính xác trung bình (~466MB)</option>
+            <option value="medium">medium - Chậm hơn, độ chính xác tốt (~1.5GB)</option>
+            <option value="large-v2">large-v2 - Chậm, độ chính xác cao (~3.1GB)</option>
+            <option value="large-v3">large-v3 - Chậm, độ chính xác cao (~3.1GB)</option>
             <option value="large-v3-turbo">
-              large-v3-turbo - Balanced speed &amp; quality (~1.6GB, recommended)
+              large-v3-turbo - Cân bằng tốc độ &amp; chất lượng (~1.6GB, khuyên dùng)
             </option>
           </select>
           <p className="mt-1 text-xs text-muted-foreground">

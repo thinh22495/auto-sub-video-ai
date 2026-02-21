@@ -11,7 +11,7 @@ from backend.core.segment import Segment
 
 logger = logging.getLogger(__name__)
 
-# Default subtitle style
+# Kiểu phụ đề mặc định
 DEFAULT_STYLE = {
     "font_name": "Arial",
     "font_size": 24,
@@ -21,7 +21,7 @@ DEFAULT_STYLE = {
     "shadow_color": "#000000",
     "outline_width": 2.0,
     "shadow_depth": 1.0,
-    "alignment": 2,  # Bottom center (SSA numpad)
+    "alignment": 2,  # Giữa dưới (bàn phím số SSA)
     "margin_left": 10,
     "margin_right": 10,
     "margin_vertical": 30,
@@ -31,7 +31,7 @@ DEFAULT_STYLE = {
     "max_lines": 2,
 }
 
-# Speaker color palette for per-speaker styling
+# Bảng màu người nói cho kiểu dáng riêng từng người
 SPEAKER_COLORS = [
     "#FFFFFF", "#00FFFF", "#FF69B4", "#7FFF00",
     "#FFD700", "#FF6347", "#40E0D0", "#EE82EE",
@@ -39,7 +39,7 @@ SPEAKER_COLORS = [
 
 
 def _hex_to_ssa_color(hex_color: str) -> Color:
-    """Convert hex color (#RRGGBB) to pysubs2 Color (AABBGGRR)."""
+    """Chuyển đổi màu hex (#RRGGBB) sang pysubs2 Color (AABBGGRR)."""
     hex_color = hex_color.lstrip("#")
     r = int(hex_color[0:2], 16)
     g = int(hex_color[2:4], 16)
@@ -48,7 +48,7 @@ def _hex_to_ssa_color(hex_color: str) -> Color:
 
 
 def _wrap_text(text: str, max_length: int, max_lines: int) -> str:
-    """Wrap text to fit within max line length and max lines."""
+    """Ngắt dòng văn bản để vừa với độ dài dòng tối đa và số dòng tối đa."""
     if len(text) <= max_length:
         return text
 
@@ -66,7 +66,7 @@ def _wrap_text(text: str, max_length: int, max_lines: int) -> str:
             current_line = word
 
             if len(lines) >= max_lines - 1:
-                # Last line: dump remaining words
+                # Dòng cuối: đổ hết các từ còn lại
                 remaining_words = words[words.index(word):]
                 lines.append(" ".join(remaining_words))
                 return "\n".join(lines[:max_lines])
@@ -79,21 +79,21 @@ def _wrap_text(text: str, max_length: int, max_lines: int) -> str:
 
 def resolve_style(style: dict | None = None, preset_name: str | None = None) -> dict:
     """
-    Resolve the final subtitle style by merging defaults, preset, and overrides.
+    Xác định kiểu phụ đề cuối cùng bằng cách gộp mặc định, preset và ghi đè.
 
-    Priority: explicit style overrides > preset > defaults.
+    Ưu tiên: ghi đè kiểu trực tiếp > preset > mặc định.
     """
     from backend.video.presets import get_builtin_preset
 
     resolved = {**DEFAULT_STYLE}
 
-    # Apply preset if specified
+    # Áp dụng preset nếu được chỉ định
     if preset_name:
         preset = get_builtin_preset(preset_name)
         if preset and "subtitle_style" in preset:
             resolved.update(preset["subtitle_style"])
 
-    # Apply explicit style overrides
+    # Áp dụng ghi đè kiểu trực tiếp
     if style:
         resolved.update(style)
 
@@ -109,31 +109,31 @@ def generate_subtitles(
     preset_name: str | None = None,
 ) -> str:
     """
-    Generate a subtitle file from segments.
+    Tạo tệp phụ đề từ các đoạn.
 
-    Args:
-        segments: List of Segment objects.
-        output_path: Output file path (extension will be adjusted).
-        format: Output format ('srt', 'ass', 'vtt').
-        style: Style configuration dict (overrides defaults and preset).
-        use_translated: Use translated_text if available.
-        preset_name: Name of a built-in preset to use as base style.
+    Tham số:
+        segments: Danh sách các đối tượng Segment.
+        output_path: Đường dẫn tệp đầu ra (phần mở rộng sẽ được điều chỉnh).
+        format: Định dạng đầu ra ('srt', 'ass', 'vtt').
+        style: Dict cấu hình kiểu dáng (ghi đè mặc định và preset).
+        use_translated: Sử dụng translated_text nếu có.
+        preset_name: Tên preset tích hợp để dùng làm kiểu cơ sở.
 
-    Returns:
-        Path to the generated subtitle file.
+    Trả về:
+        Đường dẫn đến tệp phụ đề đã tạo.
     """
     style_config = resolve_style(style, preset_name)
     max_length = style_config["max_line_length"]
     max_lines = style_config["max_lines"]
 
-    # Ensure correct extension
+    # Đảm bảo phần mở rộng đúng
     ext_map = {"srt": ".srt", "ass": ".ass", "vtt": ".vtt"}
     output_file = Path(output_path).with_suffix(ext_map.get(format, ".srt"))
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     subs = SSAFile()
 
-    # Set video resolution info for ASS (helps with rendering)
+    # Đặt thông tin độ phân giải video cho ASS (hỗ trợ hiển thị)
     if format == "ass":
         subs.info["PlayResX"] = "1920"
         subs.info["PlayResY"] = "1080"
@@ -144,7 +144,7 @@ def generate_subtitles(
         text = (seg.translated_text if use_translated and seg.translated_text else seg.text)
         text = _wrap_text(text, max_length, max_lines)
 
-        # Add speaker label for SRT/VTT
+        # Thêm nhãn người nói cho SRT/VTT
         if seg.speaker and format != "ass":
             text = f"[{seg.speaker}]: {text}"
 
@@ -154,7 +154,7 @@ def generate_subtitles(
             text=text,
         )
 
-        # For ASS with speakers, use different styles
+        # Với ASS có người nói, sử dụng các kiểu khác nhau
         if seg.speaker and format == "ass":
             speaker_style_name = f"Speaker_{seg.speaker}"
             if speaker_style_name not in subs.styles:
@@ -165,7 +165,7 @@ def generate_subtitles(
 
         subs.append(event)
 
-    # Save in requested format
+    # Lưu theo định dạng yêu cầu
     output_str = str(output_file)
     subs.save(output_str, format_=format)
 

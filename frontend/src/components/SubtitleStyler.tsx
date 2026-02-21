@@ -52,11 +52,11 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
   return (
     <div className="space-y-6">
       {/* Font Settings */}
-      <StyleSection icon={<Type className="h-4 w-4" />} title="Font">
+      <StyleSection icon={<Type className="h-4 w-4" />} title="Phông chữ">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Font Family
+              Kiểu phông
             </label>
             <select
               value={style.font_name}
@@ -72,7 +72,7 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Font Size
+              Cỡ chữ
             </label>
             <input
               type="number"
@@ -112,25 +112,25 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
       </StyleSection>
 
       {/* Colors */}
-      <StyleSection icon={<Palette className="h-4 w-4" />} title="Colors">
+      <StyleSection icon={<Palette className="h-4 w-4" />} title="Màu sắc">
         <div className="grid grid-cols-2 gap-3">
           <ColorInput
-            label="Primary"
+            label="Chính"
             value={style.primary_color}
             onChange={(v) => update("primary_color", v)}
           />
           <ColorInput
-            label="Secondary"
+            label="Phụ"
             value={style.secondary_color}
             onChange={(v) => update("secondary_color", v)}
           />
           <ColorInput
-            label="Outline"
+            label="Viền"
             value={style.outline_color}
             onChange={(v) => update("outline_color", v)}
           />
           <ColorInput
-            label="Shadow"
+            label="Bóng"
             value={style.shadow_color}
             onChange={(v) => update("shadow_color", v)}
           />
@@ -140,12 +140,12 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
       {/* Outline & Shadow */}
       <StyleSection
         icon={<Type className="h-4 w-4" />}
-        title="Outline & Shadow"
+        title="Viền & Bóng"
       >
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Outline Width
+              Độ dày viền
             </label>
             <input
               type="range"
@@ -162,7 +162,7 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Shadow Depth
+              Độ sâu bóng
             </label>
             <input
               type="range"
@@ -183,7 +183,7 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
       {/* Alignment */}
       <StyleSection
         icon={<AlignHorizontalJustifyCenter className="h-4 w-4" />}
-        title="Alignment"
+        title="Căn lề"
       >
         <div className="inline-grid grid-cols-3 gap-1">
           {ALIGNMENT_OPTIONS.map((opt) => (
@@ -204,11 +204,11 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
       </StyleSection>
 
       {/* Margins */}
-      <StyleSection icon={<Move className="h-4 w-4" />} title="Margins">
+      <StyleSection icon={<Move className="h-4 w-4" />} title="Lề">
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Left
+              Trái
             </label>
             <input
               type="number"
@@ -221,7 +221,7 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Right
+              Phải
             </label>
             <input
               type="number"
@@ -234,7 +234,7 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Vertical
+              Dọc
             </label>
             <input
               type="number"
@@ -253,12 +253,12 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
       {/* Text Constraints */}
       <StyleSection
         icon={<Type className="h-4 w-4" />}
-        title="Text Constraints"
+        title="Giới hạn văn bản"
       >
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Max Line Length
+              Độ dài dòng tối đa
             </label>
             <input
               type="number"
@@ -273,7 +273,7 @@ export function SubtitleStyler({ style, onChange }: SubtitleStylerProps) {
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Max Lines
+              Số dòng tối đa
             </label>
             <input
               type="number"

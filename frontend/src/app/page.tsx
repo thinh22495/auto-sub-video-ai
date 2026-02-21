@@ -61,12 +61,12 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Tiêu đề */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground">Trang chủ</h1>
           <p className="text-sm text-muted-foreground">
-            AutoSubAI - Offline video subtitle generation
+            AutoSubAI - Tạo phụ đề video tự động offline
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -75,63 +75,63 @@ export default function DashboardPage() {
             className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
             <Layers className="h-4 w-4" />
-            Batch
+            Hàng loạt
           </Link>
           <Link
             href="/jobs/new/"
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <PlusCircle className="h-4 w-4" />
-            New Job
+            Tạo mới
           </Link>
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Thống kê nhanh */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <QuickStat
-          label="Active"
+          label="Đang xử lý"
           value={activeJobs}
           icon={<Loader2 className={`h-4 w-4 ${activeJobs > 0 ? "animate-spin" : ""}`} />}
           color="text-primary"
         />
         <QuickStat
-          label="Queued"
+          label="Chờ xử lý"
           value={queuedJobs}
           icon={<Clock className="h-4 w-4" />}
           color="text-warning"
         />
         <QuickStat
-          label="Completed"
+          label="Hoàn thành"
           value={completedJobs}
           icon={<CheckCircle2 className="h-4 w-4" />}
           color="text-success"
         />
         <QuickStat
-          label="Failed"
+          label="Thất bại"
           value={failedJobs}
           icon={<XCircle className="h-4 w-4" />}
           color="text-danger"
         />
       </div>
 
-      {/* System Status Cards */}
+      {/* Trạng thái hệ thống */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatusCard
-          title="API Server"
-          value={health?.services.api === "up" ? "Online" : "Offline"}
+          title="Máy chủ API"
+          value={health?.services.api === "up" ? "Trực tuyến" : "Ngoại tuyến"}
           status={health?.services.api === "up" ? "success" : "danger"}
           icon={<Activity className="h-5 w-5" />}
         />
         <StatusCard
           title="Redis"
-          value={health?.services.redis === "up" ? "Connected" : "Disconnected"}
+          value={health?.services.redis === "up" ? "Đã kết nối" : "Mất kết nối"}
           status={health?.services.redis === "up" ? "success" : "danger"}
           icon={<MonitorSpeaker className="h-5 w-5" />}
         />
         <StatusCard
           title="Ollama"
-          value={health?.services.ollama === "up" ? "Running" : "Stopped"}
+          value={health?.services.ollama === "up" ? "Đang chạy" : "Đã dừng"}
           status={health?.services.ollama === "up" ? "success" : "warning"}
           icon={<Cpu className="h-5 w-5" />}
         />
@@ -139,39 +139,39 @@ export default function DashboardPage() {
           title="GPU"
           value={
             health?.services.gpu.available
-              ? health.services.gpu.name || "Available"
-              : "CPU Only"
+              ? health.services.gpu.name || "Khả dụng"
+              : "Chỉ CPU"
           }
           status={health?.services.gpu.available ? "success" : "warning"}
           icon={<HardDrive className="h-5 w-5" />}
           subtitle={
             health?.services.gpu.available
-              ? `${health.services.gpu.vram_free_mb}MB free / ${health.services.gpu.vram_total_mb}MB`
+              ? `${health.services.gpu.vram_free_mb}MB trống / ${health.services.gpu.vram_total_mb}MB`
               : undefined
           }
         />
       </div>
 
-      {/* Disk Usage */}
+      {/* Dung lượng ổ đĩa */}
       {health && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <DiskCard title="Videos Storage" usage={health.disk.videos} />
-          <DiskCard title="Models Storage" usage={health.disk.models} />
+          <DiskCard title="Lưu trữ video" usage={health.disk.videos} />
+          <DiskCard title="Lưu trữ mô hình" usage={health.disk.models} />
         </div>
       )}
 
-      {/* Active Batches */}
+      {/* Batch gần đây */}
       {batches.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">
-              Recent Batches
+              Batch gần đây
             </h2>
             <Link
               href="/batch/"
               className="text-xs font-medium text-primary hover:underline"
             >
-              View all
+              Xem tất cả
             </Link>
           </div>
           <div className="space-y-2">
@@ -194,11 +194,11 @@ export default function DashboardPage() {
                       {batch.name || `Batch ${batch.id.slice(0, 8)}`}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {batch.completed_jobs}/{batch.total_jobs} completed
+                      {batch.completed_jobs}/{batch.total_jobs} hoàn thành
                       {batch.failed_jobs > 0 && (
                         <span className="text-danger">
                           {" "}
-                          &middot; {batch.failed_jobs} failed
+                          &middot; {batch.failed_jobs} thất bại
                         </span>
                       )}
                     </p>
@@ -220,13 +220,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Recent Jobs */}
+      {/* Công việc gần đây */}
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Recent Jobs</h2>
+          <h2 className="text-lg font-semibold text-foreground">Công việc gần đây</h2>
           {jobs.length > 0 && (
             <span className="text-xs text-muted-foreground">
-              {jobs.length} shown
+              Hiển thị {jobs.length}
             </span>
           )}
         </div>
@@ -234,13 +234,13 @@ export default function DashboardPage() {
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Activity className="mb-3 h-8 w-8" />
             <p className="text-sm">
-              No jobs yet. Create your first subtitle job!
+              Chưa có công việc nào. Hãy tạo phụ đề đầu tiên!
             </p>
             <Link
               href="/jobs/new/"
               className="mt-3 text-sm font-medium text-primary hover:underline"
             >
-              Get started
+              Bắt đầu ngay
             </Link>
           </div>
         ) : (
@@ -294,7 +294,7 @@ export default function DashboardPage() {
 
       {error && (
         <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
-          Failed to connect to API: {error}
+          Không thể kết nối API: {error}
         </div>
       )}
     </div>
@@ -399,9 +399,9 @@ function DiskCard({
       <div className="mt-3">
         <div className="mb-1 flex justify-between text-xs text-muted-foreground">
           <span>
-            {(usage.total_gb - usage.free_gb).toFixed(1)}GB used
+            Đã dùng {(usage.total_gb - usage.free_gb).toFixed(1)}GB
           </span>
-          <span>{usage.free_gb.toFixed(1)}GB free</span>
+          <span>Còn trống {usage.free_gb.toFixed(1)}GB</span>
         </div>
         <div className="h-2 rounded-full bg-muted">
           <div

@@ -16,15 +16,15 @@ ProgressCallback = Callable[[ProgressInfo], None]
 
 class SubtitlePipeline:
     """
-    Orchestrates the full subtitle generation pipeline:
-    1. Extract audio from video
-    2. Transcribe audio to text
-    3. (Optional) Translate text
-    4. Generate subtitle file(s)
-    5. (Optional) Burn subtitles into video
+    Điều phối toàn bộ pipeline tạo phụ đề:
+    1. Trích xuất âm thanh từ video
+    2. Phiên âm âm thanh thành văn bản
+    3. (Tùy chọn) Dịch văn bản
+    4. Tạo tệp phụ đề
+    5. (Tùy chọn) Ghi phụ đề vào video
     """
 
-    TOTAL_STEPS_BASE = 3  # extract + transcribe + generate
+    TOTAL_STEPS_BASE = 3  # trích xuất + phiên âm + tạo phụ đề
     STEP_DIARIZE = 1
     STEP_TRANSLATE = 1
     STEP_BURNIN = 1
@@ -55,7 +55,7 @@ class SubtitlePipeline:
         self.video_preset = video_preset
         self.on_progress = on_progress
 
-        # Calculate total steps
+        # Tính tổng số bước
         self.total_steps = self.TOTAL_STEPS_BASE
         if enable_diarization:
             self.total_steps += self.STEP_DIARIZE
@@ -80,7 +80,7 @@ class SubtitlePipeline:
             ))
 
     def run(self) -> dict:
-        """Run the full pipeline. Returns dict with output paths and metadata."""
+        """Chạy toàn bộ pipeline. Trả về dict chứa đường dẫn đầu ra và metadata."""
         start_time = time.time()
         input_file = Path(self.input_path)
 
@@ -89,30 +89,30 @@ class SubtitlePipeline:
 
         logger.info("Pipeline started: %s", self.input_path)
 
-        # Step 1: Extract audio
+        # Bước 1: Trích xuất âm thanh
         audio_path = self._step_extract_audio()
 
-        # Step 2: Transcribe
+        # Bước 2: Phiên âm
         transcription = self._step_transcribe(audio_path)
 
-        # Step 3: Diarize (optional)
+        # Bước 3: Phân biệt người nói (tùy chọn)
         segments = transcription.segments
         if self.enable_diarization:
             segments = self._step_diarize(audio_path, segments)
 
-        # Step 4: Translate (optional)
+        # Bước 4: Dịch (tùy chọn)
         if self.target_language and self.target_language != transcription.language:
             segments = self._step_translate(segments, transcription.language)
 
-        # Step 5: Generate subtitle files
+        # Bước 5: Tạo tệp phụ đề
         subtitle_paths = self._step_generate_subtitles(segments, input_file.stem)
 
-        # Step 6: Burn in (optional)
+        # Bước 6: Ghi phụ đề vào video (tùy chọn)
         output_video_path = None
         if self.burn_in and subtitle_paths:
             output_video_path = self._step_burn_in(subtitle_paths[0])
 
-        # Clean up temp audio
+        # Dọn dẹp tệp âm thanh tạm
         try:
             Path(audio_path).unlink(missing_ok=True)
         except OSError:
@@ -138,7 +138,7 @@ class SubtitlePipeline:
         self._report(0, "Extracting audio from video...")
 
         def on_ffmpeg_progress(percent, msg):
-            # Scale to step range: 0-100 of this step
+            # Co giãn theo phạm vi bước: 0-100 của bước hiện tại
             overall = (self._current_step / self.total_steps) * 100 + (percent / self.total_steps)
             self._report(overall, msg)
 
@@ -200,7 +200,7 @@ class SubtitlePipeline:
         from backend.core.translator import translate_segments
         from backend.core.language_detector import LANGUAGE_NAMES
 
-        # Dynamic step index: after transcribe(1), optionally diarize(2)
+        # Chỉ số bước động: sau phiên âm(1), tùy chọn phân biệt người nói(2)
         self._current_step = 2 + (1 if self.enable_diarization else 0)
         source_name = LANGUAGE_NAMES.get(source_lang, source_lang)
         target_name = LANGUAGE_NAMES.get(self.target_language, self.target_language)
@@ -229,7 +229,7 @@ class SubtitlePipeline:
     def _step_generate_subtitles(self, segments: list[Segment], base_name: str) -> list[str]:
         from backend.core.subtitle_generator import generate_subtitles
 
-        # Dynamic step index: base(2) + diarize?(1) + translate?(1)
+        # Chỉ số bước động: cơ sở(2) + phân biệt người nói?(1) + dịch?(1)
         step_idx = 2
         if self.enable_diarization:
             step_idx += 1
@@ -286,7 +286,7 @@ class SubtitlePipeline:
             overall = base + (percent / 100) * step_range
             self._report(overall, msg)
 
-        # Resolve video encoding settings from preset
+        # Lấy cài đặt mã hóa video từ preset
         video_settings = None
         if self.video_preset:
             from backend.video.presets import get_builtin_preset

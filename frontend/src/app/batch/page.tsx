@@ -106,7 +106,7 @@ export default function BatchPage() {
   };
 
   const handleDelete = async (batchId: string) => {
-    if (!confirm("Delete this batch and all its jobs?")) return;
+    if (!confirm("Xóa batch này và tất cả các tác vụ của nó?")) return;
     try {
       await api.delete(`/batch/${batchId}`);
       setBatches((prev) => prev.filter((b) => b.id !== batchId));
@@ -121,9 +121,9 @@ export default function BatchPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Batch Processing</h1>
+          <h1 className="text-2xl font-bold text-foreground">Xử lý hàng loạt</h1>
           <p className="text-sm text-muted-foreground">
-            Process multiple videos at once
+            Xử lý nhiều video cùng lúc
           </p>
         </div>
         <button
@@ -131,7 +131,7 @@ export default function BatchPage() {
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
-          New Batch
+          Tạo batch mới
         </button>
       </div>
 
@@ -139,7 +139,7 @@ export default function BatchPage() {
       {showCreate && (
         <div className="rounded-xl border border-border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold text-foreground">
-            Create New Batch
+            Tạo batch mới
           </h2>
           <BatchUploader onBatchCreated={handleBatchCreated} />
         </div>
@@ -154,7 +154,7 @@ export default function BatchPage() {
         <div className="rounded-xl border border-border bg-card p-8">
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Layers className="mb-3 h-8 w-8" />
-            <p className="text-sm">No batches yet. Create your first batch!</p>
+            <p className="text-sm">Chưa có batch nào. Hãy tạo batch đầu tiên!</p>
           </div>
         </div>
       ) : (
@@ -191,12 +191,12 @@ export default function BatchPage() {
                       {batch.name || `Batch ${batch.id.slice(0, 8)}`}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {batch.total_jobs} files &middot; {batch.completed_jobs}{" "}
-                      done
+                      {batch.total_jobs} tệp &middot; {batch.completed_jobs}{" "}
+                      hoàn thành
                       {batch.failed_jobs > 0 && (
                         <span className="text-danger">
                           {" "}
-                          &middot; {batch.failed_jobs} failed
+                          &middot; {batch.failed_jobs} thất bại
                         </span>
                       )}{" "}
                       &middot; {new Date(batch.created_at).toLocaleString()}
@@ -227,7 +227,7 @@ export default function BatchPage() {
                       <button
                         onClick={() => handleCancel(batch.id)}
                         className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-warning"
-                        title="Cancel all"
+                        title="Hủy tất cả"
                       >
                         <StopCircle className="h-4 w-4" />
                       </button>
@@ -236,7 +236,7 @@ export default function BatchPage() {
                       <button
                         onClick={() => handleRetry(batch.id)}
                         className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        title="Retry failed"
+                        title="Thử lại các mục thất bại"
                       >
                         <RotateCcw className="h-4 w-4" />
                       </button>
@@ -245,7 +245,7 @@ export default function BatchPage() {
                       <button
                         onClick={() => handleDelete(batch.id)}
                         className="rounded p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
-                        title="Delete batch"
+                        title="Xóa batch"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -341,7 +341,7 @@ function BatchJobRow({ job }: { job: BatchJobSummary }) {
         <Link
           href={`/jobs/${job.id}/edit`}
           className="rounded p-1 text-muted-foreground hover:text-primary"
-          title="Edit subtitles"
+          title="Chỉnh sửa phụ đề"
         >
           <FileText className="h-3.5 w-3.5" />
         </Link>

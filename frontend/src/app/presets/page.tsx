@@ -77,7 +77,7 @@ export default function PresetsPage() {
   const handleNewPreset = () => {
     setSelectedId(null);
     setEditingStyle({ ...DEFAULT_STYLE });
-    setEditingName("My Preset");
+    setEditingName("Mẫu của tôi");
     setEditingDesc("");
     setIsCreating(true);
   };
@@ -101,7 +101,7 @@ export default function PresetsPage() {
       await fetchPresets();
       setIsCreating(false);
     } catch (err: any) {
-      alert(`Save failed: ${err.message}`);
+      alert(`Lưu thất bại: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -117,14 +117,14 @@ export default function PresetsPage() {
       await fetchPresets();
       handleSelect(newPreset);
     } catch (err: any) {
-      alert(`Duplicate failed: ${err.message}`);
+      alert(`Nhân bản thất bại: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleDelete = async (presetId: string) => {
-    if (!confirm("Delete this preset?")) return;
+    if (!confirm("Xóa mẫu này?")) return;
     setActionLoading(presetId);
     try {
       await api.delete(`/presets/${presetId}`);
@@ -134,7 +134,7 @@ export default function PresetsPage() {
       }
       await fetchPresets();
     } catch (err: any) {
-      alert(`Delete failed: ${err.message}`);
+      alert(`Xóa thất bại: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
@@ -157,9 +157,9 @@ export default function PresetsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Export Presets</h1>
+          <h1 className="text-2xl font-bold text-foreground">Mẫu phụ đề</h1>
           <p className="text-sm text-muted-foreground">
-            Manage subtitle styling and video encoding presets
+            Quản lý kiểu dáng phụ đề và các mẫu mã hóa video
           </p>
         </div>
         <button
@@ -167,7 +167,7 @@ export default function PresetsPage() {
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
-          New Preset
+          Tạo mới
         </button>
       </div>
 
@@ -178,7 +178,7 @@ export default function PresetsPage() {
           <div>
             <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Lock className="h-3 w-3" />
-              Built-in
+              Có sẵn
             </h3>
             <div className="space-y-1.5">
               {builtinPresets.map((preset) => (
@@ -198,12 +198,12 @@ export default function PresetsPage() {
           <div>
             <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Pencil className="h-3 w-3" />
-              Custom ({userPresets.length})
+              Tùy chỉnh ({userPresets.length})
             </h3>
             {userPresets.length === 0 ? (
               <p className="py-3 text-center text-xs text-muted-foreground">
-                No custom presets yet. Click &quot;New Preset&quot; or duplicate
-                a built-in one.
+                Chưa có mẫu tùy chỉnh. Nhấn &quot;Tạo mới&quot; hoặc nhân bản
+                từ mẫu có sẵn.
               </p>
             ) : (
               <div className="space-y-1.5">
@@ -228,14 +228,14 @@ export default function PresetsPage() {
           {!selectedId && !isCreating ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-20 text-muted-foreground">
               <Palette className="mb-3 h-8 w-8" />
-              <p className="text-sm">Select a preset or create a new one</p>
+              <p className="text-sm">Chọn một mẫu hoặc tạo mẫu mới</p>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Preview */}
               <div className="rounded-xl border border-border bg-card p-4">
                 <h3 className="mb-3 text-sm font-semibold text-foreground">
-                  Live Preview
+                  Xem trước trực tiếp
                 </h3>
                 <div className="flex justify-center">
                   <SubtitlePreview style={editingStyle} />
@@ -248,7 +248,7 @@ export default function PresetsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="mb-1 block text-xs text-muted-foreground">
-                        Name
+                        Tên
                       </label>
                       <input
                         type="text"
@@ -259,13 +259,13 @@ export default function PresetsPage() {
                     </div>
                     <div>
                       <label className="mb-1 block text-xs text-muted-foreground">
-                        Description
+                        Mô tả
                       </label>
                       <input
                         type="text"
                         value={editingDesc}
                         onChange={(e) => setEditingDesc(e.target.value)}
-                        placeholder="Optional description"
+                        placeholder="Mô tả (tùy chọn)"
                         className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
                       />
                     </div>
@@ -276,10 +276,10 @@ export default function PresetsPage() {
               {/* Style Editor */}
               <div className="rounded-xl border border-border bg-card p-4">
                 <h3 className="mb-4 text-sm font-semibold text-foreground">
-                  Style Settings
+                  Cài đặt kiểu dáng
                   {!isEditable && (
                     <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      (read-only — duplicate to customize)
+                      (chỉ đọc — nhân bản để tùy chỉnh)
                     </span>
                   )}
                 </h3>
@@ -304,7 +304,7 @@ export default function PresetsPage() {
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    {isCreating ? "Create Preset" : "Save Changes"}
+                    {isCreating ? "Tạo mẫu" : "Lưu thay đổi"}
                   </button>
                   <button
                     onClick={() => {
@@ -314,7 +314,7 @@ export default function PresetsPage() {
                     className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
                   >
                     <X className="h-4 w-4" />
-                    Cancel
+                    Hủy
                   </button>
                 </div>
               )}
@@ -374,7 +374,7 @@ function PresetCard({
           <div className="flex flex-shrink-0 gap-1" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={onDuplicate}
-              title="Duplicate"
+              title="Nhân bản"
               className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <Copy className="h-3.5 w-3.5" />
@@ -382,7 +382,7 @@ function PresetCard({
             {onDelete && (
               <button
                 onClick={onDelete}
-                title="Delete"
+                title="Xóa"
                 className="rounded p-1 text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -397,7 +397,7 @@ function PresetCard({
         <div
           className="h-4 w-4 rounded-sm border border-white/10"
           style={{ backgroundColor: preset.subtitle_style.primary_color }}
-          title="Primary color"
+          title="Màu chính"
         />
         <span className="text-[10px] text-muted-foreground">
           {preset.subtitle_style.font_name} {preset.subtitle_style.font_size}px

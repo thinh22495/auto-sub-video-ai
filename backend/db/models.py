@@ -15,6 +15,7 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# Bảng công việc - lưu trữ thông tin các tác vụ tạo phụ đề
 class Job(Base):
     __tablename__ = "jobs"
 
@@ -28,12 +29,12 @@ class Job(Base):
     source_language: Mapped[str | None] = mapped_column(String, nullable=True)
     detected_language: Mapped[str | None] = mapped_column(String, nullable=True)
     target_language: Mapped[str | None] = mapped_column(String, nullable=True)
-    output_formats: Mapped[str] = mapped_column(Text, nullable=False)  # JSON array
+    output_formats: Mapped[str] = mapped_column(Text, nullable=False)  # Mảng JSON
     burn_in: Mapped[bool] = mapped_column(Boolean, default=False)
     enable_diarization: Mapped[bool] = mapped_column(Boolean, default=False)
     whisper_model: Mapped[str] = mapped_column(String, nullable=False)
     ollama_model: Mapped[str | None] = mapped_column(String, nullable=True)
-    subtitle_style: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    subtitle_style: Mapped[str | None] = mapped_column(Text, nullable=True)  # Kiểu JSON
     video_preset: Mapped[str | None] = mapped_column(String, nullable=True)
     priority: Mapped[int] = mapped_column(Integer, default=0)
     current_step: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -44,7 +45,7 @@ class Job(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     output_subtitle_paths: Mapped[str | None] = mapped_column(
         Text, nullable=True
-    )  # JSON array
+    )  # Mảng JSON
     output_video_path: Mapped[str | None] = mapped_column(String, nullable=True)
 
     batch: Mapped["Batch | None"] = relationship(back_populates="jobs")
@@ -53,6 +54,7 @@ class Job(Base):
     )
 
 
+# Bảng nhóm xử lý hàng loạt - quản lý nhiều công việc cùng lúc
 class Batch(Base):
     __tablename__ = "batches"
 
@@ -68,6 +70,7 @@ class Batch(Base):
     jobs: Mapped[list["Job"]] = relationship(back_populates="batch")
 
 
+# Bảng phiên bản phụ đề - lưu trữ các phiên bản chỉnh sửa phụ đề
 class SubtitleVersion(Base):
     __tablename__ = "subtitle_versions"
 
@@ -84,19 +87,21 @@ class SubtitleVersion(Base):
     job: Mapped["Job"] = relationship(back_populates="versions")
 
 
+# Bảng mẫu cấu hình - lưu các thiết lập phụ đề và video có sẵn
 class Preset(Base):
     __tablename__ = "presets"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
     name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    subtitle_style: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
-    video_settings: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    subtitle_style: Mapped[str] = mapped_column(Text, nullable=False)  # Kiểu JSON
+    video_settings: Mapped[str | None] = mapped_column(Text, nullable=True)  # Kiểu JSON
     is_builtin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+# Bảng cài đặt ứng dụng - lưu các thiết lập cấu hình hệ thống
 class AppSetting(Base):
     __tablename__ = "app_settings"
 

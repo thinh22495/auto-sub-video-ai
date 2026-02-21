@@ -385,8 +385,8 @@ export default function SubtitleEditorPage() {
               {job.input_filename}
             </h1>
             <p className="text-[10px] text-muted-foreground">
-              {segments.length} segments
-              {hasChanges && " (unsaved changes)"}
+              {segments.length} đoạn
+              {hasChanges && " (thay đổi chưa lưu)"}
             </p>
           </div>
         </div>
@@ -396,7 +396,7 @@ export default function SubtitleEditorPage() {
             onClick={undo}
             disabled={historyIndex <= 0}
             className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30"
-            title="Undo (Ctrl+Z)"
+            title="Hoàn tác (Ctrl+Z)"
           >
             <Undo2 className="h-4 w-4" />
           </button>
@@ -404,7 +404,7 @@ export default function SubtitleEditorPage() {
             onClick={redo}
             disabled={historyIndex >= history.length - 1}
             className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30"
-            title="Redo (Ctrl+Y)"
+            title="Làm lại (Ctrl+Y)"
           >
             <Redo2 className="h-4 w-4" />
           </button>
@@ -415,33 +415,33 @@ export default function SubtitleEditorPage() {
             onClick={splitSegment}
             disabled={selectedIndex === null}
             className="flex items-center gap-1 rounded px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30"
-            title="Split segment at playhead"
+            title="Tách đoạn tại vị trí phát"
           >
             <Scissors className="h-3.5 w-3.5" />
-            Split
+            Tách
           </button>
           <button
             onClick={mergeWithNext}
             disabled={selectedIndex === null || selectedIndex >= segments.length - 1}
             className="flex items-center gap-1 rounded px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30"
-            title="Merge with next segment"
+            title="Gộp với đoạn kế tiếp"
           >
             <Merge className="h-3.5 w-3.5" />
-            Merge
+            Gộp
           </button>
           <button
             onClick={addSegment}
             className="flex items-center gap-1 rounded px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            title="Add new segment"
+            title="Thêm đoạn mới"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add
+            Thêm
           </button>
           <button
             onClick={deleteSegment}
             disabled={selectedIndex === null}
             className="flex items-center gap-1 rounded px-2 py-1.5 text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-30"
-            title="Delete segment"
+            title="Xóa đoạn"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -453,7 +453,7 @@ export default function SubtitleEditorPage() {
             className="flex items-center gap-1 rounded px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <History className="h-3.5 w-3.5" />
-            Versions
+            Phiên bản
           </button>
           <button
             onClick={handleSave}
@@ -461,7 +461,7 @@ export default function SubtitleEditorPage() {
             className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            Save
+            Lưu
           </button>
         </div>
       </div>
@@ -585,7 +585,7 @@ export default function SubtitleEditorPage() {
                       rows={2}
                     />
                     <div className="flex items-center gap-2">
-                      <label className="text-[10px] text-muted-foreground">Start:</label>
+                      <label className="text-[10px] text-muted-foreground">Bắt đầu:</label>
                       <input
                         type="number"
                         step="0.1"
@@ -594,7 +594,7 @@ export default function SubtitleEditorPage() {
                         onBlur={() => commitSegmentEdit("Edit timing")}
                         className="w-20 rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground"
                       />
-                      <label className="text-[10px] text-muted-foreground">End:</label>
+                      <label className="text-[10px] text-muted-foreground">Kết thúc:</label>
                       <input
                         type="number"
                         step="0.1"
@@ -603,14 +603,14 @@ export default function SubtitleEditorPage() {
                         onBlur={() => commitSegmentEdit("Edit timing")}
                         className="w-20 rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground"
                       />
-                      <label className="text-[10px] text-muted-foreground">Speaker:</label>
+                      <label className="text-[10px] text-muted-foreground">Người nói:</label>
                       <input
                         type="text"
                         value={seg.speaker || ""}
                         onChange={(e) => updateSegment(i, { speaker: e.target.value || null })}
                         onBlur={() => commitSegmentEdit("Edit speaker")}
                         className="w-24 rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground"
-                        placeholder="None"
+                        placeholder="Không có"
                       />
                     </div>
                   </div>
@@ -627,7 +627,7 @@ export default function SubtitleEditorPage() {
       {showVersions && (
         <div className="absolute right-0 top-0 z-30 flex h-full w-80 flex-col border-l border-border bg-card shadow-xl">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold text-foreground">Version History</h3>
+            <h3 className="text-sm font-semibold text-foreground">Lịch sử phiên bản</h3>
             <button
               onClick={() => setShowVersions(false)}
               className="rounded p-1 text-muted-foreground hover:text-foreground"
@@ -638,7 +638,7 @@ export default function SubtitleEditorPage() {
           <div className="flex-1 overflow-y-auto">
             {versions.length === 0 ? (
               <p className="p-4 text-center text-sm text-muted-foreground">
-                No saved versions yet
+                Chưa có phiên bản nào
               </p>
             ) : (
               versions.map((v) => (
@@ -655,7 +655,7 @@ export default function SubtitleEditorPage() {
                       className="flex items-center gap-1 rounded px-2 py-1 text-xs text-primary hover:bg-primary/10"
                     >
                       <RotateCcw className="h-3 w-3" />
-                      Restore
+                      Khôi phục
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground">{v.description}</p>

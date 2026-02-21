@@ -5,71 +5,71 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# ISO 639-1 language names
+# Tên ngôn ngữ theo ISO 639-1
 LANGUAGE_NAMES: dict[str, str] = {
-    "af": "Afrikaans", "am": "Amharic", "ar": "Arabic", "as": "Assamese",
-    "az": "Azerbaijani", "ba": "Bashkir", "be": "Belarusian", "bg": "Bulgarian",
-    "bn": "Bengali", "bo": "Tibetan", "br": "Breton", "bs": "Bosnian",
-    "ca": "Catalan", "cs": "Czech", "cy": "Welsh", "da": "Danish",
-    "de": "German", "el": "Greek", "en": "English", "es": "Spanish",
-    "et": "Estonian", "eu": "Basque", "fa": "Persian", "fi": "Finnish",
-    "fo": "Faroese", "fr": "French", "gl": "Galician", "gu": "Gujarati",
-    "ha": "Hausa", "haw": "Hawaiian", "he": "Hebrew", "hi": "Hindi",
-    "hr": "Croatian", "ht": "Haitian Creole", "hu": "Hungarian", "hy": "Armenian",
-    "id": "Indonesian", "is": "Icelandic", "it": "Italian", "ja": "Japanese",
-    "jw": "Javanese", "ka": "Georgian", "kk": "Kazakh", "km": "Khmer",
-    "kn": "Kannada", "ko": "Korean", "la": "Latin", "lb": "Luxembourgish",
-    "ln": "Lingala", "lo": "Lao", "lt": "Lithuanian", "lv": "Latvian",
-    "mg": "Malagasy", "mi": "Maori", "mk": "Macedonian", "ml": "Malayalam",
-    "mn": "Mongolian", "mr": "Marathi", "ms": "Malay", "mt": "Maltese",
-    "my": "Myanmar", "ne": "Nepali", "nl": "Dutch", "nn": "Nynorsk",
-    "no": "Norwegian", "oc": "Occitan", "pa": "Punjabi", "pl": "Polish",
-    "ps": "Pashto", "pt": "Portuguese", "ro": "Romanian", "ru": "Russian",
-    "sa": "Sanskrit", "sd": "Sindhi", "si": "Sinhala", "sk": "Slovak",
-    "sl": "Slovenian", "sn": "Shona", "so": "Somali", "sq": "Albanian",
-    "sr": "Serbian", "su": "Sundanese", "sv": "Swedish", "sw": "Swahili",
-    "ta": "Tamil", "te": "Telugu", "tg": "Tajik", "th": "Thai",
-    "tk": "Turkmen", "tl": "Tagalog", "tr": "Turkish", "tt": "Tatar",
-    "uk": "Ukrainian", "ur": "Urdu", "uz": "Uzbek", "vi": "Vietnamese",
-    "yi": "Yiddish", "yo": "Yoruba", "zh": "Chinese", "zu": "Zulu",
+    "af": "Tiếng Afrikaans", "am": "Tiếng Amharic", "ar": "Tiếng Ả Rập", "as": "Tiếng Assam",
+    "az": "Tiếng Azerbaijan", "ba": "Tiếng Bashkir", "be": "Tiếng Belarus", "bg": "Tiếng Bulgaria",
+    "bn": "Tiếng Bengal", "bo": "Tiếng Tây Tạng", "br": "Tiếng Breton", "bs": "Tiếng Bosnia",
+    "ca": "Tiếng Catalan", "cs": "Tiếng Séc", "cy": "Tiếng Wales", "da": "Tiếng Đan Mạch",
+    "de": "Tiếng Đức", "el": "Tiếng Hy Lạp", "en": "Tiếng Anh", "es": "Tiếng Tây Ban Nha",
+    "et": "Tiếng Estonia", "eu": "Tiếng Basque", "fa": "Tiếng Ba Tư", "fi": "Tiếng Phần Lan",
+    "fo": "Tiếng Faroe", "fr": "Tiếng Pháp", "gl": "Tiếng Galicia", "gu": "Tiếng Gujarat",
+    "ha": "Tiếng Hausa", "haw": "Tiếng Hawaii", "he": "Tiếng Do Thái", "hi": "Tiếng Hindi",
+    "hr": "Tiếng Croatia", "ht": "Tiếng Creole Haiti", "hu": "Tiếng Hungary", "hy": "Tiếng Armenia",
+    "id": "Tiếng Indonesia", "is": "Tiếng Iceland", "it": "Tiếng Ý", "ja": "Tiếng Nhật",
+    "jw": "Tiếng Java", "ka": "Tiếng Gruzia", "kk": "Tiếng Kazakh", "km": "Tiếng Khmer",
+    "kn": "Tiếng Kannada", "ko": "Tiếng Hàn", "la": "Tiếng Latin", "lb": "Tiếng Luxembourg",
+    "ln": "Tiếng Lingala", "lo": "Tiếng Lào", "lt": "Tiếng Litva", "lv": "Tiếng Latvia",
+    "mg": "Tiếng Malagasy", "mi": "Tiếng Maori", "mk": "Tiếng Macedonia", "ml": "Tiếng Malayalam",
+    "mn": "Tiếng Mông Cổ", "mr": "Tiếng Marathi", "ms": "Tiếng Mã Lai", "mt": "Tiếng Malta",
+    "my": "Tiếng Myanmar", "ne": "Tiếng Nepal", "nl": "Tiếng Hà Lan", "nn": "Tiếng Na Uy Nynorsk",
+    "no": "Tiếng Na Uy", "oc": "Tiếng Occitan", "pa": "Tiếng Punjab", "pl": "Tiếng Ba Lan",
+    "ps": "Tiếng Pashto", "pt": "Tiếng Bồ Đào Nha", "ro": "Tiếng Romania", "ru": "Tiếng Nga",
+    "sa": "Tiếng Phạn", "sd": "Tiếng Sindhi", "si": "Tiếng Sinhala", "sk": "Tiếng Slovak",
+    "sl": "Tiếng Slovenia", "sn": "Tiếng Shona", "so": "Tiếng Somali", "sq": "Tiếng Albania",
+    "sr": "Tiếng Serbia", "su": "Tiếng Sunda", "sv": "Tiếng Thụy Điển", "sw": "Tiếng Swahili",
+    "ta": "Tiếng Tamil", "te": "Tiếng Telugu", "tg": "Tiếng Tajik", "th": "Tiếng Thái",
+    "tk": "Tiếng Turkmen", "tl": "Tiếng Tagalog", "tr": "Tiếng Thổ Nhĩ Kỳ", "tt": "Tiếng Tatar",
+    "uk": "Tiếng Ukraine", "ur": "Tiếng Urdu", "uz": "Tiếng Uzbek", "vi": "Tiếng Việt",
+    "yi": "Tiếng Yiddish", "yo": "Tiếng Yoruba", "zh": "Tiếng Trung", "zu": "Tiếng Zulu",
 }
 
 
 def detect_language(audio_path: str, model_name: str = "large-v3-turbo") -> dict:
     """
-    Detect the language of an audio file using faster-whisper.
+    Nhận diện ngôn ngữ của tệp âm thanh sử dụng faster-whisper.
 
-    Returns:
-        dict with 'language' (ISO code), 'language_name', and 'confidence'.
+    Trả về:
+        dict với 'language' (mã ISO), 'language_name', và 'confidence'.
     """
     from backend.core.transcriber import _get_model
 
     model = _get_model(model_name)
 
-    # Use detect_language which only processes first 30 seconds
+    # Sử dụng detect_language chỉ xử lý 30 giây đầu tiên
     segments, info = model.transcribe(
         audio_path,
         language=None,
         beam_size=1,
         vad_filter=True,
     )
-    # We need to consume at least one segment to trigger detection
-    # but info already has the detected language
+    # Cần tiêu thụ ít nhất một đoạn để kích hoạt nhận diện
+    # nhưng info đã có ngôn ngữ được phát hiện
     detected = info.language
     confidence = info.language_probability
 
-    logger.info("Language detected: %s (%s) with confidence %.2f",
-                detected, LANGUAGE_NAMES.get(detected, "Unknown"), confidence)
+    logger.info("Đã nhận diện ngôn ngữ: %s (%s) với độ tin cậy %.2f",
+                detected, LANGUAGE_NAMES.get(detected, "Không xác định"), confidence)
 
     return {
         "language": detected,
-        "language_name": LANGUAGE_NAMES.get(detected, "Unknown"),
+        "language_name": LANGUAGE_NAMES.get(detected, "Không xác định"),
         "confidence": confidence,
     }
 
 
 def get_supported_languages() -> list[dict]:
-    """Return list of all supported languages."""
+    """Trả về danh sách tất cả ngôn ngữ được hỗ trợ."""
     return [
         {"code": code, "name": name}
         for code, name in sorted(LANGUAGE_NAMES.items(), key=lambda x: x[1])

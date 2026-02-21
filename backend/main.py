@@ -4,7 +4,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from backend.api.router import api_router
 from backend.config.settings import settings
@@ -26,18 +25,18 @@ async def lifespan(app: FastAPI):
     global _start_time
     setup_logging()
     _start_time = time.time()
-    logger.info("AutoSubAI starting up...")
+    logger.info("AutoSubAI đang khởi động...")
     # Startup: create tables and ensure directories exist
     settings.ensure_directories()
     Base.metadata.create_all(bind=engine)
-    logger.info("Database initialized, directories ensured.")
+    logger.info("Đã khởi tạo cơ sở dữ liệu, đã tạo thư mục.")
     yield
-    logger.info("AutoSubAI shutting down.")
+    logger.info("AutoSubAI đang tắt.")
 
 
 app = FastAPI(
     title="AutoSubAI",
-    description="Offline video subtitle generation tool",
+    description="Công cụ tạo phụ đề video ngoại tuyến",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -51,8 +50,3 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
-
-# Serve frontend static files (built Next.js SPA)
-frontend_dir = Path(__file__).parent.parent / "frontend" / "out"
-if frontend_dir.exists():
-    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")

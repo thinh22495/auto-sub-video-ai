@@ -1,11 +1,11 @@
 """
-Celery Beat periodic tasks for housekeeping.
+Các tác vụ định kỳ Celery Beat để bảo trì hệ thống.
 
-Tasks:
-- cleanup_temp_files: Remove old temp files
-- cleanup_old_jobs: Archive/delete old completed jobs
-- update_batch_statuses: Sync batch status from job states
-- health_check: Periodic health verification
+Tác vụ:
+- cleanup_temp_files: Xóa tệp tạm cũ
+- cleanup_old_jobs: Lưu trữ/xóa công việc cũ đã hoàn thành
+- update_batch_statuses: Đồng bộ trạng thái batch từ trạng thái công việc
+- health_check: Kiểm tra sức khỏe định kỳ
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ celery_app.conf.beat_schedule = {
 
 @celery_app.task(name="backend.tasks.scheduler.cleanup_temp_files")
 def cleanup_temp_files():
-    """Remove temporary files older than configured max age."""
+    """Xóa tệp tạm cũ hơn thời gian tối đa đã cấu hình."""
     temp_dir = Path(settings.TEMP_DIR)
     if not temp_dir.exists():
         return {"cleaned": 0}
@@ -65,19 +65,19 @@ def cleanup_temp_files():
                 if age > max_age_seconds:
                     path.unlink()
                     cleaned += 1
-                    logger.debug("Cleaned temp file: %s (age: %.0fh)", path.name, age / 3600)
+                    logger.debug("Đã dọn tệp tạm: %s (tuổi: %.0fh)", path.name, age / 3600)
         except OSError as e:
             logger.warning("Failed to clean temp file %s: %s", path, e)
 
     if cleaned > 0:
-        logger.info("Cleaned %d temp files", cleaned)
+        logger.info("Đã dọn %d tệp tạm", cleaned)
 
     return {"cleaned": cleaned}
 
 
 @celery_app.task(name="backend.tasks.scheduler.cleanup_old_jobs")
 def cleanup_old_jobs():
-    """Delete completed jobs older than retention period."""
+    """Xóa công việc đã hoàn thành cũ hơn thời gian lưu giữ."""
     retention_days = settings.COMPLETED_JOB_RETENTION_DAYS
     if retention_days <= 0:
         return {"deleted": 0}
@@ -103,7 +103,7 @@ def cleanup_old_jobs():
 
         if deleted > 0:
             db.commit()
-            logger.info("Cleaned %d old jobs (older than %d days)", deleted, retention_days)
+            logger.info("Đã dọn %d công việc cũ (hơn %d ngày)", deleted, retention_days)
 
         # Also clean up empty batches
         empty_batches = (
@@ -116,7 +116,7 @@ def cleanup_old_jobs():
             db.delete(batch)
         if empty_batches:
             db.commit()
-            logger.info("Cleaned %d empty batches", len(empty_batches))
+            logger.info("Đã dọn %d batch trống", len(empty_batches))
 
     except Exception as e:
         logger.error("Error cleaning old jobs: %s", e)
@@ -129,7 +129,7 @@ def cleanup_old_jobs():
 
 @celery_app.task(name="backend.tasks.scheduler.update_batch_statuses")
 def update_batch_statuses():
-    """Sync batch statuses from their jobs. Handles race conditions."""
+    """Đồng bộ trạng thái batch từ công việc. Xử lý điều kiện race."""
     db = SessionLocal()
     updated = 0
 
@@ -177,7 +177,7 @@ def update_batch_statuses():
 
 @celery_app.task(name="backend.tasks.scheduler.periodic_health_check")
 def periodic_health_check():
-    """Periodic health check — detect stale jobs and log system status."""
+    """Kiểm tra sức khỏe định kỳ — phát hiện công việc treo và ghi log trạng thái hệ thống."""
     db = SessionLocal()
     stale_jobs = []
     issues = []
@@ -195,25 +195,25 @@ def periodic_health_check():
         )
 
         for job in stale_jobs:
-            issues.append(f"Stale job: {job.id} ({job.input_filename})")
+            issues.append(f"Công việc treo: {job.id} ({job.input_filename})")
             logger.warning(
-                "Stale job detected: %s (%s), started at %s",
+                "Phát hiện công việc treo: %s (%s), bắt đầu lúc %s",
                 job.id, job.input_filename, job.started_at,
             )
 
         # Check disk space
         import shutil
         for dir_path, dir_name in [
-            (settings.VIDEO_INPUT_DIR, "Videos"),
-            (settings.MODEL_DIR, "Models"),
-            (settings.SUBTITLE_OUTPUT_DIR, "Subtitles"),
+            (settings.VIDEO_INPUT_DIR, "Video"),
+            (settings.MODEL_DIR, "Mô hình"),
+            (settings.SUBTITLE_OUTPUT_DIR, "Phụ đề"),
         ]:
             try:
                 usage = shutil.disk_usage(dir_path)
                 free_gb = usage.free / (1024**3)
                 if free_gb < 1.0:
-                    issues.append(f"Low disk space: {dir_name} ({free_gb:.1f}GB free)")
-                    logger.warning("Low disk space on %s: %.1fGB free", dir_name, free_gb)
+                    issues.append(f"Dung lượng đĩa thấp: {dir_name} (còn {free_gb:.1f}GB)")
+                    logger.warning("Dung lượng đĩa thấp tại %s: còn %.1fGB", dir_name, free_gb)
             except OSError:
                 pass
 
@@ -228,7 +228,7 @@ def periodic_health_check():
 # ---------- Helpers ----------
 
 def _cleanup_job_files(job: Job):
-    """Remove output files for a job."""
+    """Xóa tệp đầu ra của công việc."""
     import json
 
     if job.output_subtitle_paths:

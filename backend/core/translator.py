@@ -37,22 +37,22 @@ def translate_segments(
     on_progress: ProgressCallback | None = None,
 ) -> list[Segment]:
     """
-    Translate subtitle segments using Ollama LLM.
+    Dịch các đoạn phụ đề sử dụng Ollama LLM.
 
-    Uses batched translation with surrounding context for coherence.
-    Each batch sends context_size previous segments as reference.
+    Sử dụng dịch theo lô với ngữ cảnh xung quanh để đảm bảo tính mạch lạc.
+    Mỗi lô gửi context_size đoạn trước đó làm tham chiếu.
 
-    Args:
-        segments: Segments to translate.
-        source_lang: Source language name (e.g., "English").
-        target_lang: Target language name (e.g., "Vietnamese").
-        model: Ollama model name. Defaults to settings.
-        batch_size: Segments per API call.
-        context_size: Previous segments sent as context.
-        on_progress: Callback(percent, message).
+    Tham số:
+        segments: Các đoạn cần dịch.
+        source_lang: Tên ngôn ngữ nguồn (vd: "English").
+        target_lang: Tên ngôn ngữ đích (vd: "Vietnamese").
+        model: Tên model Ollama. Mặc định theo cài đặt.
+        batch_size: Số đoạn mỗi lần gọi API.
+        context_size: Số đoạn trước đó gửi làm ngữ cảnh.
+        on_progress: Callback(phần trăm, thông báo).
 
-    Returns:
-        Same segments with translated_text populated.
+    Trả về:
+        Các đoạn giống nhau với translated_text đã được điền.
     """
     if not segments:
         return segments
@@ -71,12 +71,12 @@ def translate_segments(
     if on_progress:
         on_progress(0, f"Translating {total} segments ({source_lang} -> {target_lang})...")
 
-    # Process in batches
+    # Xử lý theo lô
     for batch_start in range(0, total, batch_size):
         batch_end = min(batch_start + batch_size, total)
         batch = segments[batch_start:batch_end]
 
-        # Build context from previous segments
+        # Xây dựng ngữ cảnh từ các đoạn trước đó
         context_segments = segments[max(0, batch_start - context_size):batch_start]
 
         user_message = _build_translation_prompt(context_segments, batch, batch_start)
@@ -88,7 +88,7 @@ def translate_segments(
                 prompt=user_message,
             )
 
-            # Parse response and assign translations
+            # Phân tích phản hồi và gán bản dịch
             translations = _parse_translation_response(response_text, len(batch))
 
             for i, translation in enumerate(translations):
@@ -102,7 +102,7 @@ def translate_segments(
                 "Translation failed for batch %d-%d: %s",
                 batch_start, batch_end, e,
             )
-            # On failure, copy original text as fallback
+            # Khi thất bại, sao chép văn bản gốc làm dự phòng
             for seg in batch:
                 if not seg.translated_text:
                     seg.translated_text = seg.text
@@ -137,7 +137,7 @@ def _build_translation_prompt(
     batch: list[Segment],
     batch_start: int,
 ) -> str:
-    """Build the user prompt with context and numbered segments."""
+    """Xây dựng prompt cho người dùng với ngữ cảnh và các đoạn được đánh số."""
     parts = []
 
     if context:
@@ -159,7 +159,7 @@ def _build_translation_prompt(
 
 
 def _parse_translation_response(response: str, expected_count: int) -> list[str]:
-    """Parse numbered translations from LLM response."""
+    """Phân tích các bản dịch được đánh số từ phản hồi LLM."""
     lines = response.strip().split("\n")
     translations: list[str] = []
 
@@ -168,7 +168,7 @@ def _parse_translation_response(response: str, expected_count: int) -> list[str]
         if not line:
             continue
 
-        # Try to match patterns like "[1] text", "1. text", "1) text", or just "text"
+        # Thử khớp các mẫu như "[1] text", "1. text", "1) text", hoặc chỉ "text"
         cleaned = line
         for prefix_pattern in ["[", ""]:
             if prefix_pattern == "[" and line.startswith("["):
@@ -177,7 +177,7 @@ def _parse_translation_response(response: str, expected_count: int) -> list[str]
                     cleaned = line[bracket_end + 1:].strip()
                     break
             elif line[0].isdigit():
-                # Skip leading number + separator
+                # Bỏ qua số đầu dòng + ký tự phân cách
                 i = 0
                 while i < len(line) and line[i].isdigit():
                     i += 1
@@ -188,16 +188,16 @@ def _parse_translation_response(response: str, expected_count: int) -> list[str]
         if cleaned:
             translations.append(cleaned)
 
-    # If we got too few, pad with empty strings
+    # Nếu nhận được quá ít, thêm chuỗi rỗng
     while len(translations) < expected_count:
         translations.append("")
 
-    # If we got too many, truncate
+    # Nếu nhận được quá nhiều, cắt bớt
     return translations[:expected_count]
 
 
 def _call_ollama(model: str, system: str, prompt: str) -> str:
-    """Call Ollama chat API and return the response text."""
+    """Gọi API chat Ollama và trả về văn bản phản hồi."""
     url = f"{settings.OLLAMA_BASE_URL}/api/chat"
 
     payload = {
@@ -223,11 +223,11 @@ def _call_ollama(model: str, system: str, prompt: str) -> str:
 
 
 def test_ollama_connection(model: str | None = None) -> dict:
-    """Test if Ollama is reachable and model is available."""
+    """Kiểm tra xem Ollama có truy cập được và model có sẵn không."""
     model = model or settings.DEFAULT_OLLAMA_MODEL
     try:
         with httpx.Client(timeout=5) as client:
-            # Check if Ollama is running
+            # Kiểm tra xem Ollama có đang chạy không
             resp = client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
             resp.raise_for_status()
             tags = resp.json()

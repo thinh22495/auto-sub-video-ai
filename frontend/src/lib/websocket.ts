@@ -1,7 +1,12 @@
 import type { JobProgressEvent } from "./types";
 
+// WebSocket: cần kết nối trực tiếp đến backend (Next.js không proxy WS)
+// Dùng NEXT_PUBLIC_WS_URL nếu có, nếu không thì dùng cùng origin (qua reverse proxy)
 const WS_BASE =
-  process.env.NEXT_PUBLIC_WS_URL || `ws://${typeof window !== "undefined" ? window.location.hostname : "localhost"}:8000/api`;
+  process.env.NEXT_PUBLIC_WS_URL ||
+  (typeof window !== "undefined"
+    ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api`
+    : "ws://localhost:8000/api");
 
 type ProgressHandler = (event: JobProgressEvent) => void;
 

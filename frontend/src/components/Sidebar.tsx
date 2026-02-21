@@ -14,12 +14,12 @@ import {
 } from "lucide-react";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
-  { name: "New Job", href: "/jobs/new/", icon: PlusCircle },
-  { name: "Batch", href: "/batch/", icon: Layers },
-  { name: "Presets", href: "/presets/", icon: Palette },
-  { name: "Models", href: "/models/", icon: Cpu },
-  { name: "Settings", href: "/settings/", icon: Settings },
+  { name: "Trang chủ", href: "/", icon: Home },
+  { name: "Tạo mới", href: "/jobs/new/", icon: PlusCircle },
+  { name: "Hàng loạt", href: "/batch/", icon: Layers },
+  { name: "Mẫu style", href: "/presets/", icon: Palette },
+  { name: "Mô hình", href: "/models/", icon: Cpu },
+  { name: "Cài đặt", href: "/settings/", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -34,11 +34,11 @@ export function Sidebar() {
         </div>
         <div>
           <h1 className="text-lg font-bold text-foreground">AutoSubAI</h1>
-          <p className="text-xs text-muted-foreground">v0.1.0</p>
+          <p className="text-xs text-muted-foreground">Phụ đề tự động</p>
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Điều hướng */}
       <nav className="flex-1 space-y-1 p-3">
         {navigation.map((item) => {
           const isActive =
@@ -64,7 +64,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Status Footer */}
+      {/* Trạng thái */}
       <div className="border-t border-border p-4">
         <StatusIndicator />
       </div>
@@ -79,14 +79,14 @@ function StatusIndicator() {
         <span className="text-muted-foreground">API</span>
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-success" />
-          <span className="text-success">Online</span>
+          <span className="text-success">Trực tuyến</span>
         </span>
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">GPU</span>
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-muted-foreground" />
-          <span className="text-muted-foreground">Checking...</span>
+          <span className="text-muted-foreground">Đang kiểm tra...</span>
         </span>
       </div>
     </div>

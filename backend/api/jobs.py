@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 
-# ---------- Pydantic Schemas ----------
+# ---------- Lược đồ Pydantic ----------
 
 class SubtitleStyleSchema(BaseModel):
     font_name: str = "Arial"
@@ -85,7 +85,7 @@ class JobResponse(BaseModel):
 
 
 def _job_to_response(job) -> dict:
-    """Convert a Job ORM model to a response dict."""
+    """Chuyển đổi model ORM Job thành dict phản hồi."""
 
     def _parse_json(val):
         if val is None:
@@ -124,23 +124,23 @@ def _job_to_response(job) -> dict:
     }
 
 
-# ---------- Endpoints ----------
+# ---------- Các endpoint ----------
 
 @router.post("", status_code=202)
 def create_job(req: JobCreateRequest, db: Session = Depends(get_db)):
-    """Create a new subtitle generation job."""
-    # Validate input file exists
+    """Tạo một công việc tạo phụ đề mới."""
+    # Kiểm tra file đầu vào có tồn tại không
     input_file = Path(req.input_path)
     if not input_file.exists():
         raise HTTPException(status_code=400, detail=f"Input file not found: {req.input_path}")
 
-    # Validate output formats
+    # Kiểm tra định dạng đầu ra hợp lệ
     valid_formats = {"srt", "ass", "vtt"}
     for fmt in req.output_formats:
         if fmt not in valid_formats:
             raise HTTPException(status_code=400, detail=f"Invalid format: {fmt}. Valid: {valid_formats}")
 
-    # Create job in database
+    # Tạo công việc trong cơ sở dữ liệu
     job = crud.create_job(
         db,
         input_path=str(input_file),
@@ -157,7 +157,7 @@ def create_job(req: JobCreateRequest, db: Session = Depends(get_db)):
         priority=req.priority,
     )
 
-    # Dispatch Celery task
+    # Gửi tác vụ Celery
     from backend.tasks.tasks import run_pipeline
     run_pipeline.apply_async(args=[job.id], priority=req.priority)
 
@@ -173,14 +173,14 @@ def list_jobs(
     status: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """List all jobs, optionally filtered by status."""
+    """Liệt kê tất cả công việc, có thể lọc theo trạng thái."""
     jobs = crud.get_jobs(db, skip=skip, limit=limit, status=status)
     return [_job_to_response(j) for j in jobs]
 
 
 @router.get("/{job_id}")
 def get_job(job_id: str, db: Session = Depends(get_db)):
-    """Get details of a specific job."""
+    """Lấy chi tiết của một công việc cụ thể."""
     job = crud.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -189,12 +189,12 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
 
 @router.delete("/{job_id}")
 def delete_job(job_id: str, db: Session = Depends(get_db)):
-    """Cancel and delete a job."""
+    """Hủy và xóa một công việc."""
     job = crud.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # If still processing, mark as cancelled
+    # Nếu đang xử lý, đánh dấu là đã hủy
     if job.status in ("QUEUED", "PROCESSING"):
         crud.update_job(db, job_id, status="CANCELLED")
 
@@ -204,7 +204,7 @@ def delete_job(job_id: str, db: Session = Depends(get_db)):
 
 @router.post("/{job_id}/retry")
 def retry_job(job_id: str, db: Session = Depends(get_db)):
-    """Retry a failed job."""
+    """Thử lại một công việc đã thất bại."""
     job = crud.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -230,7 +230,7 @@ def retry_job(job_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{job_id}/subtitles")
 def get_subtitles(job_id: str, db: Session = Depends(get_db)):
-    """Get generated subtitle content."""
+    """Lấy nội dung phụ đề đã tạo."""
     job = crud.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -263,7 +263,7 @@ def download_result(
     format: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """Download job result (subtitle file or video)."""
+    """Tải xuống kết quả công việc (file phụ đề hoặc video)."""
     job = crud.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -280,12 +280,12 @@ def download_result(
             media_type="video/mp4",
         )
 
-    # Subtitle download
+    # Tải xuống phụ đề
     paths = json.loads(job.output_subtitle_paths) if job.output_subtitle_paths else []
     if not paths:
         raise HTTPException(status_code=404, detail="No subtitle files found")
 
-    # Find the requested format or return first available
+    # Tìm định dạng được yêu cầu hoặc trả về định dạng đầu tiên có sẵn
     target_path = None
     if format:
         for p in paths:
@@ -312,7 +312,7 @@ def download_result(
     )
 
 
-# ---------- Subtitle Editing ----------
+# ---------- Chỉnh sửa phụ đề ----------
 
 class SubtitleSegment(BaseModel):
     index: int
@@ -339,7 +339,7 @@ class SubtitleVersionResponse(BaseModel):
 
 @router.get("/{job_id}/subtitles/parsed")
 def get_parsed_subtitles(job_id: str, db: Session = Depends(get_db)):
-    """Get subtitle segments as structured data for editor."""
+    """Lấy các đoạn phụ đề dưới dạng dữ liệu có cấu trúc cho trình chỉnh sửa."""
     job = crud.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -351,7 +351,7 @@ def get_parsed_subtitles(job_id: str, db: Session = Depends(get_db)):
     if not paths:
         raise HTTPException(status_code=404, detail="No subtitle files found")
 
-    # Prefer SRT for parsing, fallback to first available
+    # Ưu tiên SRT để phân tích, dự phòng lấy file đầu tiên có sẵn
     target_path = paths[0]
     for p in paths:
         if p.endswith(".srt"):
@@ -373,7 +373,7 @@ def get_parsed_subtitles(job_id: str, db: Session = Depends(get_db)):
 
 @router.put("/{job_id}/subtitles")
 def update_subtitles(job_id: str, req: SubtitleUpdateRequest, db: Session = Depends(get_db)):
-    """Update subtitles with edited segments. Creates a new version."""
+    """Cập nhật phụ đề với các đoạn đã chỉnh sửa. Tạo phiên bản mới."""
     job = crud.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -381,10 +381,10 @@ def update_subtitles(job_id: str, req: SubtitleUpdateRequest, db: Session = Depe
     if job.status != "COMPLETED":
         raise HTTPException(status_code=400, detail="Job not completed yet")
 
-    # Generate subtitle content from segments
+    # Tạo nội dung phụ đề từ các đoạn
     content = _generate_subtitle_content(req.segments, req.format)
 
-    # Determine version number
+    # Xác định số phiên bản
     existing_versions = (
         db.query(SubtitleVersion)
         .filter(SubtitleVersion.job_id == job_id)
@@ -393,7 +393,7 @@ def update_subtitles(job_id: str, req: SubtitleUpdateRequest, db: Session = Depe
     )
     next_version = (existing_versions.version + 1) if existing_versions else 1
 
-    # Save version to DB
+    # Lưu phiên bản vào cơ sở dữ liệu
     version = SubtitleVersion(
         job_id=job_id,
         version=next_version,
@@ -403,14 +403,14 @@ def update_subtitles(job_id: str, req: SubtitleUpdateRequest, db: Session = Depe
     )
     db.add(version)
 
-    # Also write to disk (overwrite the original file)
+    # Đồng thời ghi ra đĩa (ghi đè file gốc)
     paths = json.loads(job.output_subtitle_paths) if job.output_subtitle_paths else []
     for p in paths:
         if p.endswith(f".{req.format}"):
             Path(p).write_text(content, encoding="utf-8")
             break
     else:
-        # If no matching format found, write as new file
+        # Nếu không tìm thấy định dạng phù hợp, ghi dưới dạng file mới
         output_dir = Path(settings.SUBTITLE_OUTPUT_DIR)
         new_path = str(output_dir / f"{Path(job.input_path).stem}.{req.format}")
         Path(new_path).write_text(content, encoding="utf-8")
@@ -429,7 +429,7 @@ def update_subtitles(job_id: str, req: SubtitleUpdateRequest, db: Session = Depe
 
 @router.get("/{job_id}/subtitles/versions")
 def list_subtitle_versions(job_id: str, db: Session = Depends(get_db)):
-    """List all saved versions of subtitles for a job."""
+    """Liệt kê tất cả phiên bản phụ đề đã lưu của một công việc."""
     job = crud.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -455,7 +455,7 @@ def list_subtitle_versions(job_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{job_id}/subtitles/versions/{version_id}")
 def get_subtitle_version(job_id: str, version_id: str, db: Session = Depends(get_db)):
-    """Get a specific subtitle version content."""
+    """Lấy nội dung của một phiên bản phụ đề cụ thể."""
     version = (
         db.query(SubtitleVersion)
         .filter(SubtitleVersion.id == version_id, SubtitleVersion.job_id == job_id)
@@ -478,7 +478,7 @@ def get_subtitle_version(job_id: str, version_id: str, db: Session = Depends(get
 
 @router.post("/{job_id}/subtitles/versions/{version_id}/restore")
 def restore_subtitle_version(job_id: str, version_id: str, db: Session = Depends(get_db)):
-    """Restore a previous subtitle version."""
+    """Khôi phục một phiên bản phụ đề trước đó."""
     version = (
         db.query(SubtitleVersion)
         .filter(SubtitleVersion.id == version_id, SubtitleVersion.job_id == job_id)
@@ -490,7 +490,7 @@ def restore_subtitle_version(job_id: str, version_id: str, db: Session = Depends
     job = crud.get_job(db, job_id)
     paths = json.loads(job.output_subtitle_paths) if job.output_subtitle_paths else []
 
-    # Write restored content to disk
+    # Ghi nội dung đã khôi phục ra đĩa
     for p in paths:
         if p.endswith(f".{version.format}"):
             Path(p).write_text(version.content, encoding="utf-8")
@@ -501,21 +501,21 @@ def restore_subtitle_version(job_id: str, version_id: str, db: Session = Depends
 
 @router.get("/{job_id}/audio")
 def stream_audio(job_id: str, db: Session = Depends(get_db)):
-    """Stream extracted audio for waveform display in editor."""
+    """Phát trực tuyến âm thanh đã trích xuất để hiển thị dạng sóng trong trình chỉnh sửa."""
     job = crud.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Check for cached audio file
+    # Kiểm tra file âm thanh đã được cache
     temp_dir = Path(settings.TEMP_DIR)
     input_stem = Path(job.input_path).stem
     audio_path = temp_dir / f"{input_stem}_{job_id[:8]}.wav"
 
     if not audio_path.exists():
-        # Extract audio on-demand
+        # Trích xuất âm thanh theo yêu cầu
         from backend.video.ffmpeg_wrapper import extract_audio
         extracted = extract_audio(job.input_path)
-        # Move to predictable location
+        # Di chuyển đến vị trí có thể dự đoán được
         import shutil
         shutil.move(extracted, str(audio_path))
 
@@ -534,17 +534,17 @@ def stream_audio(job_id: str, db: Session = Depends(get_db)):
     )
 
 
-# ---------- Helpers ----------
+# ---------- Hàm hỗ trợ ----------
 
 def _parse_subtitle_file(path: str) -> list[dict]:
-    """Parse a subtitle file into structured segments."""
+    """Phân tích file phụ đề thành các đoạn có cấu trúc."""
     content = Path(path).read_text(encoding="utf-8")
     fmt = Path(path).suffix.lstrip(".")
     return _parse_subtitle_content(content, fmt)
 
 
 def _parse_subtitle_content(content: str, fmt: str) -> list[dict]:
-    """Parse subtitle content string into segments."""
+    """Phân tích chuỗi nội dung phụ đề thành các đoạn."""
     if fmt == "srt":
         return _parse_srt(content)
     elif fmt == "vtt":
@@ -555,7 +555,7 @@ def _parse_subtitle_content(content: str, fmt: str) -> list[dict]:
 
 
 def _parse_srt(content: str) -> list[dict]:
-    """Parse SRT content into segments."""
+    """Phân tích nội dung SRT thành các đoạn."""
     import re
     segments = []
     blocks = re.split(r"\n\s*\n", content.strip())
@@ -565,13 +565,13 @@ def _parse_srt(content: str) -> list[dict]:
         if len(lines) < 3:
             continue
 
-        # Parse index
+        # Phân tích chỉ mục
         try:
             index = int(lines[0].strip())
         except ValueError:
             continue
 
-        # Parse timestamps
+        # Phân tích mốc thời gian
         ts_match = re.match(
             r"(\d{2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,\.]\d{3})",
             lines[1].strip(),
@@ -582,10 +582,10 @@ def _parse_srt(content: str) -> list[dict]:
         start = _srt_ts_to_seconds(ts_match.group(1))
         end = _srt_ts_to_seconds(ts_match.group(2))
 
-        # Parse text (may be multiple lines)
+        # Phân tích văn bản (có thể nhiều dòng)
         text = "\n".join(lines[2:]).strip()
 
-        # Extract speaker if present: [Speaker 1]: text
+        # Trích xuất người nói nếu có: [Speaker 1]: text
         speaker = None
         speaker_match = re.match(r"\[([^\]]+)\]:\s*(.*)", text, re.DOTALL)
         if speaker_match:
@@ -604,10 +604,10 @@ def _parse_srt(content: str) -> list[dict]:
 
 
 def _parse_vtt(content: str) -> list[dict]:
-    """Parse VTT content into segments."""
+    """Phân tích nội dung VTT thành các đoạn."""
     import re
     segments = []
-    # Remove WEBVTT header
+    # Xóa phần header WEBVTT
     content = re.sub(r"^WEBVTT[^\n]*\n\n?", "", content, flags=re.MULTILINE)
     blocks = re.split(r"\n\s*\n", content.strip())
 
@@ -617,7 +617,7 @@ def _parse_vtt(content: str) -> list[dict]:
         if not lines:
             continue
 
-        # Find timestamp line
+        # Tìm dòng mốc thời gian
         ts_line_idx = 0
         for i, line in enumerate(lines):
             if "-->" in line:
@@ -650,7 +650,7 @@ def _parse_vtt(content: str) -> list[dict]:
 
 
 def _parse_ass(content: str) -> list[dict]:
-    """Parse ASS content into segments (dialogue events only)."""
+    """Phân tích nội dung ASS thành các đoạn (chỉ các sự kiện hội thoại)."""
     import re
     segments = []
     idx = 1
@@ -670,9 +670,9 @@ def _parse_ass(content: str) -> list[dict]:
         speaker = parts[4].strip() or None
         text = parts[9].strip()
 
-        # Remove ASS override tags
+        # Xóa các thẻ ghi đè ASS
         text = re.sub(r"\{[^}]*\}", "", text)
-        # Replace \N with newline
+        # Thay thế \N bằng ký tự xuống dòng
         text = text.replace("\\N", "\n")
 
         segments.append({
@@ -704,7 +704,7 @@ def _ass_ts_to_seconds(ts: str) -> float:
 
 
 def _generate_subtitle_content(segments: list[SubtitleSegment], fmt: str) -> str:
-    """Generate subtitle file content from segments."""
+    """Tạo nội dung file phụ đề từ các đoạn."""
     if fmt == "srt":
         return _generate_srt(segments)
     elif fmt == "vtt":

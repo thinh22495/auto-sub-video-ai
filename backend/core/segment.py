@@ -13,7 +13,7 @@ class Word:
 
 @dataclass
 class Segment:
-    """A single subtitle segment with timing and text."""
+    """Một đoạn phụ đề đơn lẻ với thời gian và văn bản."""
 
     start: float
     end: float
@@ -51,7 +51,7 @@ class Segment:
 
 @dataclass
 class TranscriptionResult:
-    """Result of a transcription operation."""
+    """Kết quả của một thao tác phiên âm."""
 
     segments: list[Segment]
     language: str
@@ -69,7 +69,7 @@ class TranscriptionResult:
 
 @dataclass
 class ProgressInfo:
-    """Progress information for pipeline steps."""
+    """Thông tin tiến trình cho các bước trong pipeline."""
 
     step: str
     step_number: int

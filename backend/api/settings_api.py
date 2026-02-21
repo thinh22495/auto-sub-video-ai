@@ -1,4 +1,4 @@
-"""Application settings API endpoints."""
+"""Các endpoint API cài đặt ứng dụng."""
 
 from __future__ import annotations
 
@@ -19,35 +19,35 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
-# Settings keys and their defaults (derived from settings.py)
+# Các khóa cài đặt và giá trị mặc định (lấy từ settings.py)
 SETTINGS_SCHEMA: dict[str, dict] = {
     "default_whisper_model": {
         "type": "select",
-        "label": "Default Whisper Model",
-        "description": "Speech-to-text model used for new jobs",
+        "label": "Mô hình Whisper mặc định",
+        "description": "Mô hình chuyển giọng nói thành văn bản cho công việc mới",
         "default": settings.DEFAULT_WHISPER_MODEL,
         "options": ["tiny", "base", "small", "medium", "large-v2", "large-v3", "large-v3-turbo"],
         "category": "models",
     },
     "default_ollama_model": {
         "type": "text",
-        "label": "Default Ollama Model",
-        "description": "Translation model used by default (e.g. qwen2.5:7b)",
+        "label": "Mô hình Ollama mặc định",
+        "description": "Mô hình dịch thuật mặc định (vd: qwen2.5:7b)",
         "default": settings.DEFAULT_OLLAMA_MODEL,
         "category": "models",
     },
     "default_subtitle_format": {
         "type": "select",
-        "label": "Default Subtitle Format",
-        "description": "Default output format for new jobs",
+        "label": "Định dạng phụ đề mặc định",
+        "description": "Định dạng đầu ra mặc định cho công việc mới",
         "default": settings.DEFAULT_SUBTITLE_FORMAT,
         "options": ["srt", "ass", "vtt"],
         "category": "subtitles",
     },
     "default_max_line_length": {
         "type": "number",
-        "label": "Max Line Length",
-        "description": "Maximum characters per subtitle line",
+        "label": "Độ dài dòng tối đa",
+        "description": "Số ký tự tối đa mỗi dòng phụ đề",
         "default": str(settings.DEFAULT_MAX_LINE_LENGTH),
         "min": 20,
         "max": 80,
@@ -55,8 +55,8 @@ SETTINGS_SCHEMA: dict[str, dict] = {
     },
     "default_max_lines": {
         "type": "number",
-        "label": "Max Lines",
-        "description": "Maximum number of lines per subtitle",
+        "label": "Số dòng tối đa",
+        "description": "Số dòng tối đa mỗi phụ đề",
         "default": str(settings.DEFAULT_MAX_LINES),
         "min": 1,
         "max": 4,
@@ -64,8 +64,8 @@ SETTINGS_SCHEMA: dict[str, dict] = {
     },
     "max_concurrent_jobs": {
         "type": "number",
-        "label": "Max Concurrent Jobs",
-        "description": "Maximum jobs to process simultaneously",
+        "label": "Số công việc đồng thời tối đa",
+        "description": "Số công việc xử lý đồng thời tối đa",
         "default": str(settings.MAX_CONCURRENT_JOBS),
         "min": 1,
         "max": 10,
@@ -73,8 +73,8 @@ SETTINGS_SCHEMA: dict[str, dict] = {
     },
     "temp_file_max_age_hours": {
         "type": "number",
-        "label": "Temp File Max Age (hours)",
-        "description": "Auto-delete temp files older than this",
+        "label": "Thời gian lưu file tạm tối đa (giờ)",
+        "description": "Tự động xóa file tạm cũ hơn thời gian này",
         "default": str(settings.TEMP_FILE_MAX_AGE_HOURS),
         "min": 1,
         "max": 168,
@@ -82,8 +82,8 @@ SETTINGS_SCHEMA: dict[str, dict] = {
     },
     "completed_job_retention_days": {
         "type": "number",
-        "label": "Job Retention (days)",
-        "description": "Keep completed job records for this many days",
+        "label": "Thời gian lưu công việc (ngày)",
+        "description": "Giữ hồ sơ công việc hoàn thành trong số ngày này",
         "default": str(settings.COMPLETED_JOB_RETENTION_DAYS),
         "min": 1,
         "max": 365,
@@ -108,10 +108,10 @@ class SettingsBulkUpdate(BaseModel):
 @router.get("")
 def get_all_settings(db: Session = Depends(get_db)):
     """
-    Get all application settings with their current values.
+    Lấy tất cả cài đặt ứng dụng cùng giá trị hiện tại.
 
-    Returns both the schema (type, label, options) and current values.
-    Settings not yet saved in DB use their defaults.
+    Trả về cả schema (kiểu, nhãn, tùy chọn) và giá trị hiện tại.
+    Các cài đặt chưa lưu trong DB sẽ sử dụng giá trị mặc định.
     """
     result = {}
     for key, schema in SETTINGS_SCHEMA.items():
@@ -125,16 +125,16 @@ def get_all_settings(db: Session = Depends(get_db)):
 
 @router.get("/schema")
 def get_settings_schema():
-    """Get the settings schema (no current values)."""
+    """Lấy schema cài đặt (không có giá trị hiện tại)."""
     return SETTINGS_SCHEMA
 
 
 @router.get("/{key}")
 def get_single_setting(key: str, db: Session = Depends(get_db)):
-    """Get a single setting by key."""
+    """Lấy một cài đặt theo khóa."""
     if key not in SETTINGS_SCHEMA:
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=f"Unknown setting: {key}")
+        raise HTTPException(status_code=404, detail=f"Cài đặt không xác định: {key}")
 
     schema = SETTINGS_SCHEMA[key]
     db_value = get_setting(db, key)
@@ -148,34 +148,34 @@ def get_single_setting(key: str, db: Session = Depends(get_db)):
 
 @router.put("/{key}")
 def update_single_setting(key: str, body: SettingUpdate, db: Session = Depends(get_db)):
-    """Update a single setting."""
+    """Cập nhật một cài đặt."""
     from fastapi import HTTPException
 
     if key not in SETTINGS_SCHEMA:
-        raise HTTPException(status_code=404, detail=f"Unknown setting: {key}")
+        raise HTTPException(status_code=404, detail=f"Cài đặt không xác định: {key}")
 
     schema = SETTINGS_SCHEMA[key]
 
-    # Validate value
+    # Kiểm tra giá trị
     if schema["type"] == "select" and "options" in schema:
         if body.value not in schema["options"]:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid value. Options: {schema['options']}",
+                detail=f"Giá trị không hợp lệ. Các tùy chọn: {schema['options']}",
             )
 
     if schema["type"] == "number":
         try:
             num = int(body.value)
             if "min" in schema and num < schema["min"]:
-                raise HTTPException(status_code=400, detail=f"Value must be >= {schema['min']}")
+                raise HTTPException(status_code=400, detail=f"Giá trị phải >= {schema['min']}")
             if "max" in schema and num > schema["max"]:
-                raise HTTPException(status_code=400, detail=f"Value must be <= {schema['max']}")
+                raise HTTPException(status_code=400, detail=f"Giá trị phải <= {schema['max']}")
         except ValueError:
-            raise HTTPException(status_code=400, detail="Value must be a number")
+            raise HTTPException(status_code=400, detail="Giá trị phải là số")
 
     set_setting(db, key, body.value)
-    logger.info("Setting updated: %s = %s", key, body.value)
+    logger.info("Đã cập nhật cài đặt: %s = %s", key, body.value)
 
     return {
         **schema,
@@ -186,7 +186,7 @@ def update_single_setting(key: str, body: SettingUpdate, db: Session = Depends(g
 
 @router.put("")
 def update_bulk_settings(body: SettingsBulkUpdate, db: Session = Depends(get_db)):
-    """Update multiple settings at once."""
+    """Cập nhật nhiều cài đặt cùng lúc."""
     from fastapi import HTTPException
 
     updated = {}
@@ -196,7 +196,7 @@ def update_bulk_settings(body: SettingsBulkUpdate, db: Session = Depends(get_db)
 
         schema = SETTINGS_SCHEMA[key]
 
-        # Basic validation
+        # Kiểm tra cơ bản
         if schema["type"] == "select" and "options" in schema:
             if value not in schema["options"]:
                 continue
@@ -214,13 +214,13 @@ def update_bulk_settings(body: SettingsBulkUpdate, db: Session = Depends(get_db)
         set_setting(db, key, value)
         updated[key] = value
 
-    logger.info("Bulk settings updated: %d settings", len(updated))
+    logger.info("Đã cập nhật hàng loạt: %d cài đặt", len(updated))
     return {"updated": updated, "count": len(updated)}
 
 
 @router.get("/directories/info")
 def get_directory_info():
-    """Get info about configured directories (read-only, from .env)."""
+    """Lấy thông tin về các thư mục đã cấu hình (chỉ đọc, từ .env)."""
     return {
         "video_input_dir": settings.VIDEO_INPUT_DIR,
         "subtitle_output_dir": settings.SUBTITLE_OUTPUT_DIR,

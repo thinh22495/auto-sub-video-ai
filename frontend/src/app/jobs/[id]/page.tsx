@@ -131,14 +131,14 @@ export default function JobDetailPage() {
         <div className="rounded-xl border border-success/30 bg-success/5 p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-success">
-              Transcription Complete
+              Phiên âm hoàn tất
             </h2>
             <Link
               href={`/jobs/${jobId}/edit`}
               className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
             >
               <Edit3 className="h-4 w-4" />
-              Edit Subtitles
+              Chỉnh sửa phụ đề
             </Link>
           </div>
           <div className="space-y-3">
@@ -178,7 +178,7 @@ export default function JobDetailPage() {
       {/* Failed error */}
       {job.status === "FAILED" && job.error_message && (
         <div className="rounded-xl border border-danger/30 bg-danger/5 p-6">
-          <h2 className="mb-2 text-lg font-semibold text-danger">Error</h2>
+          <h2 className="mb-2 text-lg font-semibold text-danger">Lỗi</h2>
           <pre className="whitespace-pre-wrap text-sm text-danger/80">
             {job.error_message}
           </pre>
@@ -187,23 +187,23 @@ export default function JobDetailPage() {
 
       {/* Job info cards */}
       <div className="grid grid-cols-2 gap-4">
-        <InfoCard icon={<Globe className="h-4 w-4" />} label="Source Language">
+        <InfoCard icon={<Globe className="h-4 w-4" />} label="Ngôn ngữ nguồn">
           {job.detected_language || job.source_language || "Auto-detect"}
         </InfoCard>
-        <InfoCard icon={<Globe className="h-4 w-4" />} label="Target Language">
-          {job.target_language || "None (no translation)"}
+        <InfoCard icon={<Globe className="h-4 w-4" />} label="Ngôn ngữ đích">
+          {job.target_language || "Không (không dịch)"}
         </InfoCard>
-        <InfoCard icon={<Cpu className="h-4 w-4" />} label="Whisper Model">
+        <InfoCard icon={<Cpu className="h-4 w-4" />} label="Mô hình Whisper">
           {job.whisper_model}
         </InfoCard>
-        <InfoCard icon={<Clock className="h-4 w-4" />} label="Created">
+        <InfoCard icon={<Clock className="h-4 w-4" />} label="Ngày tạo">
           {new Date(job.created_at).toLocaleString()}
         </InfoCard>
-        <InfoCard icon={<FileText className="h-4 w-4" />} label="Output Formats">
+        <InfoCard icon={<FileText className="h-4 w-4" />} label="Định dạng đầu ra">
           {job.output_formats.map((f) => `.${f}`).join(", ")}
         </InfoCard>
         <InfoCard icon={<Video className="h-4 w-4" />} label="Burn-in">
-          {job.burn_in ? "Yes" : "No"}
+          {job.burn_in ? "Có" : "Không"}
         </InfoCard>
       </div>
     </div>

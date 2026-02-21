@@ -168,7 +168,7 @@ export function FileExplorer({
       <div className={`space-y-2 ${className}`}>
         <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
           <Home className="h-3.5 w-3.5" />
-          Browse Directories
+          Duyệt thư mục
         </div>
         {roots.map((root) => (
           <button
@@ -183,7 +183,7 @@ export function FileExplorer({
               </div>
               <div className="truncate text-xs text-muted-foreground">
                 {root.path}
-                {root.file_count > 0 && ` · ${root.file_count} files`}
+                {root.file_count > 0 && ` · ${root.file_count} tệp`}
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -213,7 +213,7 @@ export function FileExplorer({
             className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowUp className="h-3.5 w-3.5" />
-            Up
+            Lên
           </button>
         )}
         <span className="flex-1 truncate text-muted-foreground">
@@ -232,7 +232,7 @@ export function FileExplorer({
         </div>
       ) : items.length === 0 ? (
         <div className="py-8 text-center text-xs text-muted-foreground">
-          Empty directory
+          Thư mục trống
         </div>
       ) : (
         <div className="max-h-64 space-y-0.5 overflow-y-auto rounded-lg border border-border">

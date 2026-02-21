@@ -30,7 +30,7 @@ export function useSettings() {
       const data = await api.get<SettingsMap>("/settings");
       setSettings(data);
     } catch (err: any) {
-      setError(err.message || "Failed to load settings");
+      setError(err.message || "Không thể tải cài đặt");
     } finally {
       setLoading(false);
     }
@@ -50,7 +50,7 @@ export function useSettings() {
           [key]: { ...prev[key], value },
         }));
       } catch (err: any) {
-        setError(err.message || "Failed to save setting");
+        setError(err.message || "Không thể lưu cài đặt");
         throw err;
       } finally {
         setSaving(false);
@@ -74,7 +74,7 @@ export function useSettings() {
           return next;
         });
       } catch (err: any) {
-        setError(err.message || "Failed to save settings");
+        setError(err.message || "Không thể lưu cài đặt");
         throw err;
       } finally {
         setSaving(false);

@@ -1,0 +1,19 @@
+# GPU support overlay - use with: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+services:
+  autosub-app:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  autosub-ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

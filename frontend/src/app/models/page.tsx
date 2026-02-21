@@ -81,20 +81,20 @@ export default function ModelsPage() {
       await api.post("/models/whisper/download", { name });
       await fetchAll();
     } catch (err: any) {
-      alert(`Download failed: ${err.message}`);
+      alert(`Tải xuống thất bại: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleWhisperDelete = async (name: string) => {
-    if (!confirm(`Delete Whisper model "${name}"?`)) return;
+    if (!confirm(`Xóa mô hình Whisper "${name}"?`)) return;
     setActionLoading(`whisper-${name}`);
     try {
       await api.delete(`/models/whisper/${name}`);
       await fetchAll();
     } catch (err: any) {
-      alert(`Delete failed: ${err.message}`);
+      alert(`Xóa thất bại: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
@@ -123,7 +123,7 @@ export default function ModelsPage() {
             try {
               const data = JSON.parse(line);
               if (data.status === "error") {
-                alert(`Pull failed: ${data.error}`);
+                alert(`Tải về thất bại: ${data.error}`);
                 break;
               }
             } catch {}
@@ -132,20 +132,20 @@ export default function ModelsPage() {
       }
       await fetchAll();
     } catch (err: any) {
-      alert(`Pull failed: ${err.message}`);
+      alert(`Tải về thất bại: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleOllamaDelete = async (name: string) => {
-    if (!confirm(`Delete Ollama model "${name}"?`)) return;
+    if (!confirm(`Xóa mô hình Ollama "${name}"?`)) return;
     setActionLoading(`ollama-${name}`);
     try {
       await api.delete(`/models/ollama/${encodeURIComponent(name)}`);
       await fetchAll();
     } catch (err: any) {
-      alert(`Delete failed: ${err.message}`);
+      alert(`Xóa thất bại: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
@@ -163,9 +163,9 @@ export default function ModelsPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Model Management</h1>
+          <h1 className="text-2xl font-bold text-foreground">Quản lý mô hình</h1>
           <p className="text-sm text-muted-foreground">
-            Download and manage Whisper (STT) and Ollama (Translation) models
+            Tải xuống và quản lý các mô hình Whisper (Chuyển giọng nói thành văn bản) và Ollama (Dịch thuật)
           </p>
         </div>
         <button
@@ -173,7 +173,7 @@ export default function ModelsPage() {
           className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
         >
           <RefreshCw className="h-4 w-4" />
-          Refresh
+          Làm mới
         </button>
       </div>
 
@@ -181,7 +181,7 @@ export default function ModelsPage() {
       <section>
         <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
           <Cpu className="h-5 w-5 text-primary" />
-          Whisper Models (Speech-to-Text)
+          Mô hình Whisper (Chuyển giọng nói thành văn bản)
         </h2>
         <div className="grid gap-3">
           {whisperModels.map((model) => (
@@ -194,7 +194,7 @@ export default function ModelsPage() {
                   <span className="font-medium text-foreground">{model.name}</span>
                   {model.is_default && (
                     <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                      Default
+                      Mặc định
                     </span>
                   )}
                   {model.downloaded && (
@@ -202,10 +202,10 @@ export default function ModelsPage() {
                   )}
                 </div>
                 <div className="mt-1 flex gap-4 text-xs text-muted-foreground">
-                  <span>Size: ~{model.size_mb}MB</span>
+                  <span>Kích thước: ~{model.size_mb}MB</span>
                   <span>VRAM: ~{model.vram_mb}MB</span>
-                  <span>Speed: {model.speed}</span>
-                  <span>Quality: {model.quality}</span>
+                  <span>Tốc độ: {model.speed}</span>
+                  <span>Chất lượng: {model.quality}</span>
                 </div>
               </div>
               <div>
@@ -217,7 +217,7 @@ export default function ModelsPage() {
                     className="flex items-center gap-1.5 rounded-lg border border-danger/30 px-3 py-1.5 text-xs text-danger transition-colors hover:bg-danger/10"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete
+                    Xóa
                   </button>
                 ) : (
                   <button
@@ -225,7 +225,7 @@ export default function ModelsPage() {
                     className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     <Download className="h-3.5 w-3.5" />
-                    Download
+                    Tải xuống
                   </button>
                 )}
               </div>
@@ -238,7 +238,7 @@ export default function ModelsPage() {
       <section>
         <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
           <HardDrive className="h-5 w-5 text-accent" />
-          Ollama Models (Translation)
+          Mô hình Ollama (Dịch thuật)
           <span
             className={cn(
               "ml-2 rounded px-2 py-0.5 text-xs",
@@ -247,7 +247,7 @@ export default function ModelsPage() {
                 : "bg-danger/10 text-danger"
             )}
           >
-            {ollamaHealth?.status === "up" ? "Connected" : "Disconnected"}
+            {ollamaHealth?.status === "up" ? "Đã kết nối" : "Mất kết nối"}
           </span>
         </h2>
 
@@ -255,7 +255,7 @@ export default function ModelsPage() {
         {ollamaModels.length > 0 && (
           <div className="mb-6">
             <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-              Installed ({ollamaModels.length})
+              Đã cài đặt ({ollamaModels.length})
             </h3>
             <div className="grid gap-3">
               {ollamaModels.map((model) => (
@@ -270,7 +270,7 @@ export default function ModelsPage() {
                       </span>
                       {model.is_default && (
                         <span className="rounded bg-accent/10 px-2 py-0.5 text-xs text-accent">
-                          Default
+                          Mặc định
                         </span>
                       )}
                     </div>
@@ -290,7 +290,7 @@ export default function ModelsPage() {
                         className="flex items-center gap-1.5 rounded-lg border border-danger/30 px-3 py-1.5 text-xs text-danger transition-colors hover:bg-danger/10"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        Delete
+                        Xóa
                       </button>
                     )}
                   </div>
@@ -304,7 +304,7 @@ export default function ModelsPage() {
         <div>
           <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Star className="h-4 w-4" />
-            Recommended for Translation
+            Đề xuất cho dịch thuật
           </h3>
           <div className="grid gap-3">
             {recommended.map((model) => (
@@ -333,7 +333,7 @@ export default function ModelsPage() {
                   {actionLoading === `ollama-${model.name}` ? (
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
                   ) : model.installed ? (
-                    <span className="text-xs text-success">Installed</span>
+                    <span className="text-xs text-success">Đã cài đặt</span>
                   ) : (
                     <button
                       onClick={() => handleOllamaPull(model.name)}
@@ -341,7 +341,7 @@ export default function ModelsPage() {
                       className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
                     >
                       <Download className="h-3.5 w-3.5" />
-                      Pull
+                      Tải về
                     </button>
                   )}
                 </div>

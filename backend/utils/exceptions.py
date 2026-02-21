@@ -1,8 +1,8 @@
-"""Error classification and exception types for AutoSubAI.
+"""Phân loại lỗi và các kiểu ngoại lệ cho AutoSubAI.
 
-Errors are classified as:
-- Transient: temporary failures that may succeed on retry (network, resource contention)
-- Permanent: failures that will not resolve without user intervention (bad input, missing model)
+Lỗi được phân loại thành:
+- Tạm thời (Transient): lỗi tạm thời có thể thành công khi thử lại (mạng, tranh chấp tài nguyên)
+- Vĩnh viễn (Permanent): lỗi không thể khắc phục nếu không có sự can thiệp của người dùng (đầu vào sai, thiếu mô hình)
 """
 
 from enum import Enum
@@ -14,7 +14,7 @@ class ErrorCategory(str, Enum):
 
 
 class AutoSubError(Exception):
-    """Base exception for AutoSubAI."""
+    """Ngoại lệ cơ sở cho AutoSubAI."""
 
     category: ErrorCategory = ErrorCategory.PERMANENT
     user_message: str = "An unexpected error occurred."
@@ -25,93 +25,93 @@ class AutoSubError(Exception):
             self.user_message = user_message
 
 
-# --- Transient errors (auto-retry candidates) ---
+# --- Lỗi tạm thời (có thể tự động thử lại) ---
 
 
 class TransientError(AutoSubError):
-    """Base for errors that may succeed on retry."""
+    """Lớp cơ sở cho các lỗi có thể thành công khi thử lại."""
 
     category = ErrorCategory.TRANSIENT
 
 
 class OllamaConnectionError(TransientError):
-    """Ollama server unreachable."""
+    """Không thể kết nối đến máy chủ Ollama."""
 
     user_message = "Translation service temporarily unavailable. Will retry."
 
 
 class RedisConnectionError(TransientError):
-    """Redis connection failed."""
+    """Kết nối Redis thất bại."""
 
     user_message = "Task queue temporarily unavailable."
 
 
 class GPUMemoryError(TransientError):
-    """GPU out of memory — may free up after other tasks complete."""
+    """GPU hết bộ nhớ — có thể giải phóng sau khi các tác vụ khác hoàn thành."""
 
     user_message = "GPU memory full. Job will retry when resources are available."
 
 
 class ResourceBusyError(TransientError):
-    """Resource locked by another process."""
+    """Tài nguyên đang bị khóa bởi tiến trình khác."""
 
     user_message = "System resources are busy. Will retry shortly."
 
 
-# --- Permanent errors (need user action) ---
+# --- Lỗi vĩnh viễn (cần người dùng xử lý) ---
 
 
 class PermanentError(AutoSubError):
-    """Base for errors that won't resolve without user intervention."""
+    """Lớp cơ sở cho các lỗi không thể khắc phục nếu không có sự can thiệp của người dùng."""
 
     category = ErrorCategory.PERMANENT
 
 
 class FileNotFoundError(PermanentError):
-    """Input file doesn't exist."""
+    """Tệp đầu vào không tồn tại."""
 
     user_message = "The specified file was not found."
 
 
 class InvalidFileError(PermanentError):
-    """File format unsupported or corrupt."""
+    """Định dạng tệp không được hỗ trợ hoặc bị hỏng."""
 
     user_message = "The file is not a supported video format or is corrupted."
 
 
 class ModelNotFoundError(PermanentError):
-    """Required AI model not downloaded."""
+    """Mô hình AI cần thiết chưa được tải xuống."""
 
     user_message = "Required model is not available. Please download it first."
 
 
 class TranscriptionError(PermanentError):
-    """Whisper failed to process audio."""
+    """Whisper không thể xử lý âm thanh."""
 
     user_message = "Failed to transcribe audio. The file may be corrupted or contain no speech."
 
 
 class TranslationError(PermanentError):
-    """Ollama translation produced bad output."""
+    """Ollama tạo ra kết quả dịch không hợp lệ."""
 
     user_message = "Translation failed. Try a different model or language pair."
 
 
 class FFmpegError(PermanentError):
-    """FFmpeg processing failed."""
+    """Xử lý FFmpeg thất bại."""
 
     user_message = "Video processing failed. The file may be corrupted or use an unsupported codec."
 
 
 class SecurityError(PermanentError):
-    """Path traversal or other security violation."""
+    """Vi phạm bảo mật: duyệt đường dẫn trái phép hoặc vi phạm khác."""
 
     user_message = "Access denied: invalid file path."
 
 
-# --- Classification helpers ---
+# --- Các hàm hỗ trợ phân loại lỗi ---
 
-# Substrings in error messages that indicate transient failures
+# Các chuỗi con trong thông báo lỗi cho biết đây là lỗi tạm thời
 _TRANSIENT_PATTERNS = [
     "connection refused",
     "connection reset",
@@ -129,7 +129,7 @@ _TRANSIENT_PATTERNS = [
 
 
 def classify_error(error: Exception) -> ErrorCategory:
-    """Classify an arbitrary exception as transient or permanent."""
+    """Phân loại một ngoại lệ bất kỳ thành tạm thời hoặc vĩnh viễn."""
     if isinstance(error, AutoSubError):
         return error.category
 

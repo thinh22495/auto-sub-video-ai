@@ -1,13 +1,13 @@
-"""Built-in subtitle styling and video encoding presets."""
+"""Các preset tạo kiểu phụ đề và mã hóa video có sẵn."""
 
 from __future__ import annotations
 
-# Built-in subtitle presets
-# Each preset defines a complete subtitle style configuration
+# Các preset phụ đề có sẵn
+# Mỗi preset định nghĩa một cấu hình kiểu phụ đề hoàn chỉnh
 BUILTIN_PRESETS: dict[str, dict] = {
     "netflix": {
         "name": "Netflix",
-        "description": "Netflix Timed Text Style Guide — clean, readable, professional",
+        "description": "Phong cách Netflix — sạch, dễ đọc, chuyên nghiệp",
         "subtitle_style": {
             "font_name": "Arial",
             "font_size": 22,
@@ -33,7 +33,7 @@ BUILTIN_PRESETS: dict[str, dict] = {
     },
     "youtube": {
         "name": "YouTube",
-        "description": "Optimized for YouTube player — slightly larger text, white on dark",
+        "description": "Tối ưu cho YouTube — chữ lớn hơn, trắng trên nền tối",
         "subtitle_style": {
             "font_name": "Roboto",
             "font_size": 24,
@@ -59,7 +59,7 @@ BUILTIN_PRESETS: dict[str, dict] = {
     },
     "bluray": {
         "name": "Blu-ray",
-        "description": "Blu-ray disc standard — bold, shadowed, high contrast",
+        "description": "Chuẩn đĩa Blu-ray — đậm, bóng, tương phản cao",
         "subtitle_style": {
             "font_name": "Arial",
             "font_size": 26,
@@ -85,7 +85,7 @@ BUILTIN_PRESETS: dict[str, dict] = {
     },
     "anime": {
         "name": "Anime Fansub",
-        "description": "Anime fansub style — colored per speaker, larger text, outline",
+        "description": "Phong cách fansub Anime — tô màu theo người nói, chữ lớn, có viền",
         "subtitle_style": {
             "font_name": "Trebuchet MS",
             "font_size": 24,
@@ -111,7 +111,7 @@ BUILTIN_PRESETS: dict[str, dict] = {
     },
     "accessibility": {
         "name": "Accessibility",
-        "description": "Large text, high contrast, extra wide — for visually impaired viewers",
+        "description": "Chữ lớn, tương phản cao — dành cho người khiếm thị",
         "subtitle_style": {
             "font_name": "Arial",
             "font_size": 32,
@@ -139,12 +139,12 @@ BUILTIN_PRESETS: dict[str, dict] = {
 
 
 def get_builtin_preset(name: str) -> dict | None:
-    """Get a built-in preset by key name."""
+    """Lấy preset có sẵn theo tên khóa."""
     return BUILTIN_PRESETS.get(name)
 
 
 def list_builtin_presets() -> list[dict]:
-    """List all built-in presets with metadata."""
+    """Liệt kê tất cả preset có sẵn cùng siêu dữ liệu."""
     result = []
     for key, preset in BUILTIN_PRESETS.items():
         result.append({

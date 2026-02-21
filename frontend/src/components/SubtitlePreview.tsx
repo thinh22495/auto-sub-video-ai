@@ -10,7 +10,7 @@ interface SubtitlePreviewProps {
   height?: number;
 }
 
-const DEFAULT_SAMPLE = "This is a sample subtitle\nwith two lines of text";
+const DEFAULT_SAMPLE = "Đây là phụ đề mẫu\nvới hai dòng văn bản";
 
 export function SubtitlePreview({
   style,

@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 
 export const metadata: Metadata = {
   title: "AutoSubAI",
-  description: "Offline video subtitle generation tool",
+  description: "Công cụ tạo phụ đề video offline",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="vi">
       <body className="antialiased">
         <div className="flex h-screen overflow-hidden">
           <Sidebar />

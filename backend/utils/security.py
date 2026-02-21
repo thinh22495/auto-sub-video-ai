@@ -1,4 +1,4 @@
-"""Path traversal prevention and input sanitization utilities."""
+"""Tiện ích ngăn chặn truy cập đường dẫn trái phép và làm sạch đầu vào."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ from pathlib import Path
 
 from backend.config.settings import settings
 
-# Directories that are allowed for file browsing and operations
+# Danh sách thư mục được phép truy cập và thao tác tệp
 ALLOWED_ROOTS: list[str] = []
 
 
 def _get_allowed_roots() -> list[str]:
-    """Lazily build the set of allowed root directories."""
+    """Khởi tạo danh sách thư mục gốc được phép khi cần (lazy loading)."""
     if not ALLOWED_ROOTS:
         ALLOWED_ROOTS.extend([
             os.path.realpath(settings.VIDEO_INPUT_DIR),
@@ -24,9 +24,9 @@ def _get_allowed_roots() -> list[str]:
 
 def is_safe_path(path: str, allowed_roots: list[str] | None = None) -> bool:
     """
-    Check if a path is within one of the allowed root directories.
+    Kiểm tra xem đường dẫn có nằm trong các thư mục gốc được phép hay không.
 
-    Prevents directory traversal attacks (e.g. ../../etc/passwd).
+    Ngăn chặn tấn công duyệt thư mục (ví dụ: ../../etc/passwd).
     """
     roots = allowed_roots or _get_allowed_roots()
     try:
@@ -38,8 +38,8 @@ def is_safe_path(path: str, allowed_roots: list[str] | None = None) -> bool:
 
 def sanitize_path(path: str, allowed_roots: list[str] | None = None) -> Path:
     """
-    Resolve and validate a path. Raises ValueError if the path
-    escapes the allowed directories.
+    Phân giải và xác thực đường dẫn. Ném ValueError nếu đường dẫn
+    nằm ngoài các thư mục được phép.
     """
     resolved = Path(path).resolve()
     if not is_safe_path(str(resolved), allowed_roots):
@@ -49,8 +49,8 @@ def sanitize_path(path: str, allowed_roots: list[str] | None = None) -> Path:
 
 def safe_join(base_dir: str, *parts: str) -> Path:
     """
-    Safely join path components to a base directory.
-    Raises ValueError if the result escapes the base.
+    Nối các thành phần đường dẫn vào thư mục gốc một cách an toàn.
+    Ném ValueError nếu kết quả vượt ra ngoài thư mục gốc.
     """
     base = Path(base_dir).resolve()
     target = (base / Path(*parts)).resolve()
@@ -61,17 +61,17 @@ def safe_join(base_dir: str, *parts: str) -> Path:
 
 def sanitize_filename(filename: str) -> str:
     """
-    Sanitize a filename by removing dangerous characters.
-    Preserves extension but strips path separators and special chars.
+    Làm sạch tên tệp bằng cách loại bỏ các ký tự nguy hiểm.
+    Giữ nguyên phần mở rộng nhưng loại bỏ dấu phân cách đường dẫn và ký tự đặc biệt.
     """
-    # Remove any path components
+    # Loại bỏ các thành phần đường dẫn
     name = Path(filename).name
 
-    # Replace problematic characters
+    # Thay thế các ký tự có vấn đề
     dangerous = set('<>:"|?*\x00')
     sanitized = "".join(c if c not in dangerous else "_" for c in name)
 
-    # Prevent empty or dot-only names
+    # Ngăn tên tệp rỗng hoặc chỉ có dấu chấm
     if not sanitized or sanitized.startswith("."):
         sanitized = f"file_{sanitized}"
 

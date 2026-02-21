@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { api } from "@/lib/api-client";
 import type { Batch, BatchCreate, SubtitleStyle } from "@/lib/types";
-import FileExplorer from "@/components/FileExplorer";
+import { FileExplorer } from "@/components/FileExplorer";
 import {
   FolderOpen,
   X,
@@ -118,13 +118,13 @@ export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
       {/* Batch name */}
       <div>
         <label className="mb-1 block text-sm font-medium text-foreground">
-          Batch Name (optional)
+          Tên batch (tùy chọn)
         </label>
         <input
           type="text"
           value={batchName}
           onChange={(e) => setBatchName(e.target.value)}
-          placeholder={`Batch (${files.length} files)`}
+          placeholder={`Batch (${files.length} file)`}
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
         />
       </div>
@@ -133,14 +133,14 @@ export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
       <div>
         <div className="mb-2 flex items-center justify-between">
           <label className="text-sm font-medium text-foreground">
-            Video Files ({files.length})
+            File video ({files.length})
           </label>
           <button
             onClick={() => setShowBrowser(true)}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-muted"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add Files
+            Thêm file
           </button>
         </div>
 
@@ -159,7 +159,7 @@ export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
             onClick={() => setShowBrowser(true)}
           >
             <FileVideo className="mb-2 h-8 w-8" />
-            <p className="text-sm">Click to browse and select video files</p>
+            <p className="text-sm">Nhấn để duyệt và chọn file video</p>
           </div>
         ) : (
           <div className="space-y-1.5 rounded-lg border border-border p-2">
@@ -176,20 +176,20 @@ export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
                   value={file.source_language || ""}
                   onChange={(e) => updateFileLanguage(i, e.target.value || null)}
                   className="rounded border border-border bg-background px-2 py-0.5 text-xs text-foreground"
-                  title="Source language override"
+                  title="Ghi đè ngôn ngữ nguồn"
                 >
-                  <option value="">Auto-detect</option>
-                  <option value="en">English</option>
-                  <option value="ja">Japanese</option>
-                  <option value="zh">Chinese</option>
-                  <option value="ko">Korean</option>
-                  <option value="vi">Vietnamese</option>
-                  <option value="fr">French</option>
-                  <option value="de">German</option>
-                  <option value="es">Spanish</option>
-                  <option value="pt">Portuguese</option>
-                  <option value="ru">Russian</option>
-                  <option value="th">Thai</option>
+                  <option value="">Tự động</option>
+                  <option value="en">Tiếng Anh</option>
+                  <option value="ja">Tiếng Nhật</option>
+                  <option value="zh">Tiếng Trung</option>
+                  <option value="ko">Tiếng Hàn</option>
+                  <option value="vi">Tiếng Việt</option>
+                  <option value="fr">Tiếng Pháp</option>
+                  <option value="de">Tiếng Đức</option>
+                  <option value="es">Tiếng Tây Ban Nha</option>
+                  <option value="pt">Tiếng Bồ Đào Nha</option>
+                  <option value="ru">Tiếng Nga</option>
+                  <option value="th">Tiếng Thái</option>
                 </select>
                 <button
                   onClick={() => removeFile(i)}
@@ -207,43 +207,43 @@ export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">
-            Target Language
+            Ngôn ngữ đích
           </label>
           <select
             value={targetLanguage}
             onChange={(e) => setTargetLanguage(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           >
-            <option value="">No translation</option>
-            <option value="en">English</option>
-            <option value="vi">Vietnamese</option>
-            <option value="ja">Japanese</option>
-            <option value="zh">Chinese</option>
-            <option value="ko">Korean</option>
-            <option value="fr">French</option>
-            <option value="de">German</option>
-            <option value="es">Spanish</option>
-            <option value="pt">Portuguese</option>
-            <option value="ru">Russian</option>
-            <option value="th">Thai</option>
+            <option value="">Không dịch</option>
+            <option value="en">Tiếng Anh</option>
+            <option value="vi">Tiếng Việt</option>
+            <option value="ja">Tiếng Nhật</option>
+            <option value="zh">Tiếng Trung</option>
+            <option value="ko">Tiếng Hàn</option>
+            <option value="fr">Tiếng Pháp</option>
+            <option value="de">Tiếng Đức</option>
+            <option value="es">Tiếng Tây Ban Nha</option>
+            <option value="pt">Tiếng Bồ Đào Nha</option>
+            <option value="ru">Tiếng Nga</option>
+            <option value="th">Tiếng Thái</option>
           </select>
         </div>
 
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">
-            Whisper Model
+            Mô hình Whisper
           </label>
           <select
             value={whisperModel}
             onChange={(e) => setWhisperModel(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           >
-            <option value="tiny">tiny (fastest)</option>
+            <option value="tiny">tiny (nhanh nhất)</option>
             <option value="base">base</option>
             <option value="small">small</option>
             <option value="medium">medium</option>
-            <option value="large-v3">large-v3 (best)</option>
-            <option value="large-v3-turbo">large-v3-turbo (recommended)</option>
+            <option value="large-v3">large-v3 (tốt nhất)</option>
+            <option value="large-v3-turbo">large-v3-turbo (khuyên dùng)</option>
           </select>
         </div>
       </div>
@@ -251,7 +251,7 @@ export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
       {/* Output formats */}
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">
-          Output Formats
+          Định dạng đầu ra
         </label>
         <div className="flex gap-2">
           {["srt", "ass", "vtt"].map((fmt) => (
@@ -279,7 +279,7 @@ export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
             onChange={(e) => setBurnIn(e.target.checked)}
             className="rounded border-border"
           />
-          Burn subtitles into video
+          Gắn phụ đề vào video
         </label>
         <label className="flex items-center gap-2 text-sm text-foreground">
           <input
@@ -288,7 +288,7 @@ export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
             onChange={(e) => setEnableDiarization(e.target.checked)}
             className="rounded border-border"
           />
-          Speaker diarization
+          Phân biệt người nói
         </label>
       </div>
 
@@ -298,7 +298,7 @@ export default function BatchUploader({ onBatchCreated }: BatchUploaderProps) {
         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
       >
         {showAdvanced ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-        Advanced Options
+        Tùy chọn nâng cao
       </button>
 
       {showAdvanced && (

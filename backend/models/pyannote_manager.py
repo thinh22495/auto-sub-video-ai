@@ -8,21 +8,21 @@ from backend.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# pyannote models metadata
+# Siêu dữ liệu mô hình pyannote
 PYANNOTE_MODELS = {
     "pyannote/speaker-diarization-3.1": {
         "size_mb": 350,
-        "description": "Speaker diarization pipeline v3.1",
+        "description": "Pipeline phân biệt người nói v3.1",
         "requires_auth": True,
     },
     "pyannote/segmentation-3.0": {
         "size_mb": 60,
-        "description": "Speaker segmentation model v3.0",
+        "description": "Mô hình phân đoạn người nói v3.0",
         "requires_auth": True,
     },
 }
 
-# In-memory cache for loaded pipeline
+# Cache trong bộ nhớ cho pipeline đã load
 _pipeline_cache: dict[str, object] = {}
 
 
@@ -31,7 +31,7 @@ def get_model_dir() -> Path:
 
 
 def is_available() -> bool:
-    """Check if pyannote.audio is installed."""
+    """Kiểm tra xem pyannote.audio đã được cài đặt chưa."""
     try:
         import pyannote.audio  # noqa: F401
         return True
@@ -44,8 +44,8 @@ def get_pipeline(
     use_auth_token: str | None = None,
 ):
     """
-    Load and cache the pyannote diarization pipeline.
-    On first call, downloads the model if not cached.
+    Tải và cache pipeline phân biệt người nói pyannote.
+    Lần gọi đầu tiên sẽ tải mô hình nếu chưa có trong cache.
     """
     cache_key = model_name
     if cache_key in _pipeline_cache:
@@ -53,14 +53,14 @@ def get_pipeline(
 
     if not is_available():
         raise RuntimeError(
-            "pyannote.audio is not installed. "
-            "Install with: pip install pyannote.audio"
+            "pyannote.audio chưa được cài đặt. "
+            "Cài đặt bằng: pip install pyannote.audio"
         )
 
     from pyannote.audio import Pipeline
     import torch
 
-    logger.info("Loading pyannote pipeline: %s", model_name)
+    logger.info("Đang tải pipeline pyannote: %s", model_name)
 
     cache_dir = get_model_dir()
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -71,22 +71,22 @@ def get_pipeline(
         cache_dir=str(cache_dir),
     )
 
-    # Move to GPU if available
+    # Chuyển sang GPU nếu có
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pipeline.to(device)
 
-    logger.info("pyannote pipeline loaded on %s", device)
+    logger.info("Đã tải pipeline pyannote trên %s", device)
     _pipeline_cache[cache_key] = pipeline
     return pipeline
 
 
 def list_models() -> list[dict]:
-    """List available pyannote models with status."""
+    """Liệt kê các mô hình pyannote có sẵn cùng trạng thái."""
     cache_dir = get_model_dir()
     result = []
 
     for name, meta in PYANNOTE_MODELS.items():
-        # Check if model is cached locally
+        # Kiểm tra mô hình đã được cache cục bộ chưa
         is_downloaded = _check_cached(name, cache_dir)
         result.append({
             "name": name,
@@ -100,16 +100,16 @@ def list_models() -> list[dict]:
 
 
 def delete_model(model_name: str) -> bool:
-    """Delete cached pyannote model files."""
+    """Xóa các tệp mô hình pyannote đã cache."""
     cache_dir = get_model_dir()
     if cache_dir.exists():
-        # Remove hub-style cache
+        # Xóa cache kiểu hub
         for d in cache_dir.iterdir():
             if d.is_dir() and model_name.replace("/", "--") in d.name:
                 shutil.rmtree(d, ignore_errors=True)
-                logger.info("Deleted pyannote model cache: %s", d)
+                logger.info("Đã xóa cache mô hình pyannote: %s", d)
 
-                # Clear from memory
+                # Xóa khỏi bộ nhớ
                 _pipeline_cache.pop(model_name, None)
                 return True
 
@@ -117,7 +117,7 @@ def delete_model(model_name: str) -> bool:
 
 
 def _check_cached(model_name: str, cache_dir: Path) -> bool:
-    """Check if a model is already cached locally."""
+    """Kiểm tra xem mô hình đã được cache cục bộ chưa."""
     if not cache_dir.exists():
         return False
 

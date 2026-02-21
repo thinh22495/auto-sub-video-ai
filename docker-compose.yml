@@ -7,6 +7,7 @@ services:
     container_name: autosub-app
     ports:
       - "${AUTOSUB_PORT:-8080}:8000"
+      - "${FRONTEND_PORT:-3000}:3000"
     volumes:
       - ./data/videos:/data/videos
       - ./data/subtitles:/data/subtitles
@@ -22,13 +23,6 @@ services:
         condition: service_healthy
       autosub-ollama:
         condition: service_started
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -56,13 +50,6 @@ services:
       - ./data/ollama:/root/.ollama
     ports:
       - "11434:11434"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     restart: unless-stopped
 
 volumes:

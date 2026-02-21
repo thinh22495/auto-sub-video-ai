@@ -1,4 +1,4 @@
-"""File browsing, upload, and download operations."""
+"""Các thao tác duyệt tệp, tải lên và tải xuống."""
 
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma"}
 
 def browse_directory(path: str | None = None) -> dict:
     """
-    List contents of a directory.
+    Liệt kê nội dung thư mục.
 
-    Returns files and subdirectories with metadata.
-    Only allowed within configured data directories.
+    Trả về tệp và thư mục con kèm metadata.
+    Chỉ cho phép trong các thư mục dữ liệu đã cấu hình.
     """
     if path is None:
         path = settings.VIDEO_INPUT_DIR
@@ -37,12 +37,12 @@ def browse_directory(path: str | None = None) -> dict:
         os.path.realpath(settings.VIDEO_OUTPUT_DIR),
     ]
     if not is_safe_path(str(real_path), allowed):
-        raise PermissionError(f"Access denied: path is outside allowed directories")
+        raise PermissionError(f"Truy cập bị từ chối: đường dẫn ngoài thư mục cho phép")
 
     if not real_path.exists():
-        raise FileNotFoundError(f"Directory not found: {path}")
+        raise FileNotFoundError(f"Không tìm thấy thư mục: {path}")
     if not real_path.is_dir():
-        raise ValueError(f"Not a directory: {path}")
+        raise ValueError(f"Không phải thư mục: {path}")
 
     items = []
     try:
@@ -74,7 +74,7 @@ def browse_directory(path: str | None = None) -> dict:
             except (PermissionError, OSError):
                 continue
     except PermissionError:
-        raise PermissionError(f"Cannot read directory: {path}")
+        raise PermissionError(f"Không thể đọc thư mục: {path}")
 
     return {
         "path": str(real_path),
@@ -84,11 +84,11 @@ def browse_directory(path: str | None = None) -> dict:
 
 
 def get_root_directories() -> list[dict]:
-    """Return the list of browsable root directories."""
+    """Trả về danh sách các thư mục gốc có thể duyệt."""
     roots = [
-        {"name": "Videos", "path": settings.VIDEO_INPUT_DIR, "description": "Input videos"},
-        {"name": "Subtitles", "path": settings.SUBTITLE_OUTPUT_DIR, "description": "Generated subtitles"},
-        {"name": "Output", "path": settings.VIDEO_OUTPUT_DIR, "description": "Output videos with burned-in subtitles"},
+        {"name": "Videos", "path": settings.VIDEO_INPUT_DIR, "description": "Video đầu vào"},
+        {"name": "Subtitles", "path": settings.SUBTITLE_OUTPUT_DIR, "description": "Phụ đề đã tạo"},
+        {"name": "Output", "path": settings.VIDEO_OUTPUT_DIR, "description": "Video đầu ra có phụ đề"},
     ]
 
     result = []
@@ -115,9 +115,9 @@ def save_upload(
     target_dir: str | None = None,
 ) -> str:
     """
-    Save an uploaded file to the target directory.
+    Lưu tệp đã tải lên vào thư mục đích.
 
-    Returns the full path to the saved file.
+    Trả về đường dẫn đầy đủ đến tệp đã lưu.
     """
     if target_dir is None:
         target_dir = settings.VIDEO_INPUT_DIR
@@ -125,7 +125,7 @@ def save_upload(
     # Validate target is within allowed directories
     allowed = [os.path.realpath(settings.VIDEO_INPUT_DIR)]
     if not is_safe_path(os.path.realpath(target_dir), allowed):
-        raise PermissionError("Upload target directory is not allowed")
+        raise PermissionError("Thư mục tải lên không được phép")
 
     safe_name = sanitize_filename(filename)
     target_path = safe_join(target_dir, safe_name)
@@ -141,7 +141,7 @@ def save_upload(
             counter += 1
 
     target_path.write_bytes(content)
-    logger.info("File uploaded: %s (%d bytes)", target_path, len(content))
+    logger.info("Đã tải lên tệp: %s (%d bytes)", target_path, len(content))
     return str(target_path)
 
 
@@ -153,9 +153,9 @@ def save_upload_chunk(
     upload_id: str,
 ) -> dict:
     """
-    Save a chunk of an uploaded file. Used for large file uploads.
+    Lưu một phần của tệp tải lên. Dùng cho tải lên tệp lớn.
 
-    Returns status info including completion state.
+    Trả về thông tin trạng thái bao gồm trạng thái hoàn thành.
     """
     temp_dir = Path(settings.TEMP_DIR) / "uploads" / upload_id
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -189,7 +189,7 @@ def save_upload_chunk(
         # Cleanup temp chunks
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-        logger.info("Chunked upload complete: %s (%d chunks)", target, total_chunks)
+        logger.info("Tải lên phân đoạn hoàn tất: %s (%d phần)", target, total_chunks)
         return {
             "status": "completed",
             "path": str(target),
@@ -204,28 +204,28 @@ def save_upload_chunk(
 
 
 def delete_file(path: str) -> bool:
-    """Delete a file if it's within allowed directories."""
+    """Xóa tệp nếu nằm trong thư mục cho phép."""
     allowed = [
         os.path.realpath(settings.VIDEO_INPUT_DIR),
         os.path.realpath(settings.SUBTITLE_OUTPUT_DIR),
         os.path.realpath(settings.VIDEO_OUTPUT_DIR),
     ]
     if not is_safe_path(path, allowed):
-        raise PermissionError("Cannot delete files outside allowed directories")
+        raise PermissionError("Không thể xóa tệp ngoài thư mục cho phép")
 
     p = Path(path)
     if not p.exists():
         return False
     if p.is_dir():
-        raise ValueError("Cannot delete directories via this endpoint")
+        raise ValueError("Không thể xóa thư mục qua endpoint này")
 
     p.unlink()
-    logger.info("File deleted: %s", path)
+    logger.info("Đã xóa tệp: %s", path)
     return True
 
 
 def get_disk_usage(path: str) -> dict:
-    """Get disk usage info for a path."""
+    """Lấy thông tin sử dụng đĩa cho đường dẫn."""
     try:
         usage = shutil.disk_usage(path)
         return {

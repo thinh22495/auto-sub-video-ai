@@ -1,4 +1,4 @@
-"""File browsing, upload, and download API endpoints."""
+"""Các endpoint API duyệt tệp, tải lên và tải xuống."""
 
 from __future__ import annotations
 
@@ -41,22 +41,22 @@ class ChunkUploadRequest(BaseModel):
 
 @router.get("/roots")
 def list_roots():
-    """List available root directories for browsing."""
+    """Liệt kê các thư mục gốc có thể duyệt."""
     return get_root_directories()
 
 
 @router.get("/browse")
 def browse(path: Optional[str] = Query(None, description="Directory path to browse")):
     """
-    Browse a directory and list its contents.
+    Duyệt thư mục và liệt kê nội dung.
 
-    Returns files and subdirectories with type, size, and modification time.
-    If no path is specified, defaults to the video input directory.
+    Trả về tệp và thư mục con với loại, kích thước và thời gian sửa đổi.
+    Nếu không chỉ định đường dẫn, mặc định là thư mục video đầu vào.
     """
     try:
         return browse_directory(path)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Directory not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy thư mục")
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -65,10 +65,10 @@ def browse(path: Optional[str] = Query(None, description="Directory path to brow
 
 @router.get("/info")
 def file_info(path: str = Query(..., description="File path")):
-    """Get detailed info about a file. For videos, returns codec/resolution/duration."""
+    """Lấy thông tin chi tiết về tệp. Với video, trả về codec/độ phân giải/thời lượng."""
     p = Path(path)
     if not p.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy tệp")
 
     import os
     allowed = [
@@ -77,7 +77,7 @@ def file_info(path: str = Query(..., description="File path")):
         os.path.realpath(settings.VIDEO_OUTPUT_DIR),
     ]
     if not is_safe_path(path, allowed):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail="Truy cập bị từ chối")
 
     stat = p.stat()
     result = {
@@ -101,12 +101,12 @@ async def upload_file(
     target_dir: Optional[str] = Query(None, description="Target directory"),
 ):
     """
-    Upload a file (single-request upload).
+    Tải lên tệp (tải lên một lần).
 
-    For large files (>100MB), use the chunked upload endpoint instead.
+    Với tệp lớn (>100MB), hãy sử dụng endpoint tải lên phân đoạn.
     """
     if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
+        raise HTTPException(status_code=400, detail="Không có tên tệp")
 
     # Check file size limit
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
@@ -114,7 +114,7 @@ async def upload_file(
     if len(content) > max_bytes:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large. Max: {settings.MAX_UPLOAD_SIZE_MB}MB",
+            detail=f"Tệp quá lớn. Tối đa: {settings.MAX_UPLOAD_SIZE_MB}MB",
         )
 
     try:
@@ -138,10 +138,10 @@ async def upload_chunk(
     upload_id: str = Query(None),
 ):
     """
-    Upload a file chunk for large file support.
+    Tải lên phân đoạn tệp cho hỗ trợ tệp lớn.
 
-    The client splits the file into chunks and uploads each one.
-    When the last chunk is received, the file is assembled.
+    Client chia tệp thành các phần và tải lên từng phần.
+    Khi nhận phần cuối cùng, tệp được ghép lại.
     """
     if not upload_id:
         upload_id = str(uuid.uuid4())
@@ -164,12 +164,12 @@ async def upload_chunk(
 
 @router.get("/download")
 def download_file(path: str = Query(..., description="File path to download")):
-    """Download a file from the server."""
+    """Tải xuống tệp từ máy chủ."""
     p = Path(path)
     if not p.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy tệp")
     if not p.is_file():
-        raise HTTPException(status_code=400, detail="Path is not a file")
+        raise HTTPException(status_code=400, detail="Đường dẫn không phải tệp")
 
     import os
     allowed = [
@@ -178,7 +178,7 @@ def download_file(path: str = Query(..., description="File path to download")):
         os.path.realpath(settings.VIDEO_OUTPUT_DIR),
     ]
     if not is_safe_path(path, allowed):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail="Truy cập bị từ chối")
 
     # Determine media type
     suffix = p.suffix.lower()
@@ -202,10 +202,10 @@ def download_file(path: str = Query(..., description="File path to download")):
 
 @router.get("/video/stream")
 def stream_video(path: str = Query(..., description="Video file path")):
-    """Stream a video file for browser preview (supports range requests)."""
+    """Phát trực tuyến video cho xem trước trên trình duyệt (hỗ trợ range requests)."""
     p = Path(path)
     if not p.exists():
-        raise HTTPException(status_code=404, detail="Video not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy video")
 
     import os
     allowed = [
@@ -213,7 +213,7 @@ def stream_video(path: str = Query(..., description="Video file path")):
         os.path.realpath(settings.VIDEO_OUTPUT_DIR),
     ]
     if not is_safe_path(path, allowed):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail="Truy cập bị từ chối")
 
     suffix = p.suffix.lower()
     media_types = {
@@ -231,11 +231,11 @@ def stream_video(path: str = Query(..., description="Video file path")):
 
 @router.delete("/delete")
 def remove_file(path: str = Query(..., description="File path to delete")):
-    """Delete a file from the server."""
+    """Xóa tệp từ máy chủ."""
     try:
         if delete_file(path):
             return {"status": "deleted", "path": path}
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy tệp")
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -244,7 +244,7 @@ def remove_file(path: str = Query(..., description="File path to delete")):
 
 @router.get("/disk")
 def disk_usage():
-    """Get disk usage for all data directories."""
+    """Lấy thông tin sử dụng đĩa cho tất cả thư mục dữ liệu."""
     return {
         "videos": get_disk_usage(settings.VIDEO_INPUT_DIR),
         "subtitles": get_disk_usage(settings.SUBTITLE_OUTPUT_DIR),

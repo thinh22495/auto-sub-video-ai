@@ -20,22 +20,22 @@ def diarize_audio(
     on_progress: DiarizationCallback | None = None,
 ) -> list[dict]:
     """
-    Run speaker diarization on an audio file using pyannote.audio.
+    Chạy phân biệt người nói trên tệp âm thanh sử dụng pyannote.audio.
 
-    Returns a list of speaker turns:
+    Trả về danh sách các lượt nói:
         [{"start": 0.5, "end": 3.2, "speaker": "SPEAKER_00"}, ...]
     """
     from backend.models.pyannote_manager import get_pipeline
 
     if on_progress:
-        on_progress(0, "Loading diarization model...")
+        on_progress(0, "Đang tải mô hình phân biệt người nói...")
 
     pipeline = get_pipeline(use_auth_token=auth_token)
 
     if on_progress:
-        on_progress(10, "Running speaker diarization...")
+        on_progress(10, "Đang phân biệt người nói...")
 
-    # Build pipeline parameters
+    # Xây dựng tham số pipeline
     params = {}
     if num_speakers is not None:
         params["num_speakers"] = num_speakers
@@ -48,9 +48,9 @@ def diarize_audio(
     diarization = pipeline(audio_path, **params)
 
     if on_progress:
-        on_progress(80, "Processing diarization results...")
+        on_progress(80, "Đang xử lý kết quả phân biệt...")
 
-    # Convert to list of turns
+    # Chuyển đổi sang danh sách các lượt nói
     turns = []
     for turn, _, speaker in diarization.itertracks(yield_label=True):
         turns.append({
@@ -60,10 +60,10 @@ def diarize_audio(
         })
 
     if on_progress:
-        on_progress(100, f"Diarization complete: {len(set(t['speaker'] for t in turns))} speakers found")
+        on_progress(100, f"Phân biệt hoàn tất: tìm thấy {len(set(t['speaker'] for t in turns))} người nói")
 
     logger.info(
-        "Diarization complete: %d turns, %d speakers",
+        "Phân biệt hoàn tất: %d lượt nói, %d người nói",
         len(turns),
         len(set(t["speaker"] for t in turns)),
     )
@@ -76,11 +76,11 @@ def assign_speakers_to_segments(
     speaker_turns: list[dict],
 ) -> list[Segment]:
     """
-    Assign speaker labels to transcription segments based on
-    overlap with diarization turns.
+    Gán nhãn người nói cho các đoạn phiên âm dựa trên
+    sự trùng lặp với các lượt phân biệt người nói.
 
-    Uses majority overlap — each segment gets the speaker
-    that covers the most of its duration.
+    Sử dụng trùng lặp đa số — mỗi đoạn nhận người nói
+    chiếm phần lớn thời lượng của đoạn đó.
     """
     if not speaker_turns:
         return segments
@@ -90,7 +90,7 @@ def assign_speakers_to_segments(
         best_overlap = 0.0
 
         for turn in speaker_turns:
-            # Calculate overlap between segment and speaker turn
+            # Tính toán sự trùng lặp giữa đoạn và lượt nói
             overlap_start = max(segment.start, turn["start"])
             overlap_end = min(segment.end, turn["end"])
             overlap = max(0.0, overlap_end - overlap_start)
@@ -102,7 +102,7 @@ def assign_speakers_to_segments(
         if best_speaker:
             segment.speaker = best_speaker
 
-    # Normalize speaker names to sequential numbering
+    # Chuẩn hóa tên người nói theo đánh số tuần tự
     unique_speakers = []
     for seg in segments:
         if seg.speaker and seg.speaker not in unique_speakers:
@@ -118,7 +118,7 @@ def assign_speakers_to_segments(
             seg.speaker = speaker_map.get(seg.speaker, seg.speaker)
 
     logger.info(
-        "Assigned speakers to %d segments (%d unique speakers)",
+        "Đã gán người nói cho %d đoạn (%d người nói duy nhất)",
         len(segments),
         len(unique_speakers),
     )

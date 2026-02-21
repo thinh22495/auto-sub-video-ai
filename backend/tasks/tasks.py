@@ -27,37 +27,37 @@ logger = logging.getLogger(__name__)
 )
 def run_pipeline(self, job_id: str):
     """
-    Run the full subtitle pipeline for a job.
+    Chạy toàn bộ pipeline phụ đề cho một công việc.
 
-    This is the main task that orchestrates all pipeline steps.
-    Each step reports progress via Redis pub/sub -> WebSocket.
+    Đây là tác vụ chính điều phối tất cả các bước pipeline.
+    Mỗi bước báo cáo tiến trình qua Redis pub/sub -> WebSocket.
     """
     db = SessionLocal()
     try:
         job = get_job(db, job_id)
         if not job:
-            logger.error("Job not found: %s", job_id)
+            logger.error("Không tìm thấy công việc: %s", job_id)
             return
 
         if job.status == "CANCELLED":
-            logger.info("Job was cancelled, skipping: %s", job_id)
+            logger.info("Công việc đã bị hủy, bỏ qua: %s", job_id)
             return
 
-        # Mark as processing
+        # Đánh dấu đang xử lý
         update_job(
             db, job_id,
             status="PROCESSING",
             started_at=datetime.now(timezone.utc),
-            current_step="Initializing",
+            current_step="Đang khởi tạo",
             progress_percent=0,
         )
 
-        # Create progress callback that updates both Redis and DB
+        # Tạo callback tiến trình cập nhật cả Redis và DB
         progress_cb = create_progress_callback(job_id)
 
         def on_progress(progress: ProgressInfo):
             progress_cb(progress)
-            # Also update DB periodically (not every callback to reduce writes)
+            # Cập nhật DB định kỳ (không phải mỗi callback để giảm ghi)
             if int(progress.progress_percent) % 5 == 0:
                 try:
                     update_job(
@@ -68,11 +68,11 @@ def run_pipeline(self, job_id: str):
                 except Exception:
                     pass
 
-        # Parse job parameters
+        # Phân tích tham số công việc
         output_formats = json.loads(job.output_formats) if isinstance(job.output_formats, str) else job.output_formats
         subtitle_style = json.loads(job.subtitle_style) if job.subtitle_style else None
 
-        # Run the pipeline
+        # Chạy pipeline
         from backend.core.pipeline import SubtitlePipeline
 
         pipeline = SubtitlePipeline(
@@ -91,7 +91,7 @@ def run_pipeline(self, job_id: str):
 
         result = pipeline.run()
 
-        # Update job with results
+        # Cập nhật công việc với kết quả
         update_job(
             db, job_id,
             status="COMPLETED",
@@ -103,7 +103,7 @@ def run_pipeline(self, job_id: str):
             output_video_path=result.get("output_video_path"),
         )
 
-        # Publish final progress
+        # Phát tiến trình cuối cùng
         publish_job_progress(
             job_id,
             ProgressInfo(
@@ -111,13 +111,13 @@ def run_pipeline(self, job_id: str):
                 step_number=pipeline.total_steps,
                 total_steps=pipeline.total_steps,
                 progress_percent=100,
-                message=f"Done! Generated {len(result.get('subtitle_paths', []))} subtitle file(s)",
+                message=f"Hoàn tất! Đã tạo {len(result.get('subtitle_paths', []))} tệp phụ đề",
             ),
             status="COMPLETED",
         )
 
         logger.info(
-            "Job completed: %s (%.1fs, %d segments, language=%s)",
+            "Công việc hoàn tất: %s (%.1fs, %d đoạn, ngôn ngữ=%s)",
             job_id,
             result.get("elapsed_seconds", 0),
             result.get("segment_count", 0),
@@ -125,7 +125,7 @@ def run_pipeline(self, job_id: str):
         )
 
     except Exception as exc:
-        logger.exception("Job failed: %s", job_id)
+        logger.exception("Công việc thất bại: %s", job_id)
 
         error_msg = str(exc)[:500]
         try:
@@ -146,12 +146,12 @@ def run_pipeline(self, job_id: str):
                 step_number=0,
                 total_steps=0,
                 progress_percent=0,
-                message=f"Error: {error_msg}",
+                message=f"Lỗi: {error_msg}",
             ),
             status="FAILED",
         )
 
-        # Retry on transient errors
+        # Thử lại với các lỗi tạm thời
         if self.request.retries < self.max_retries:
             raise self.retry(exc=exc)
 
@@ -160,38 +160,38 @@ def run_pipeline(self, job_id: str):
         db.close()
 
 
-# Keep individual task stubs for future fine-grained queue routing
+# Giữ các stub tác vụ riêng lẻ cho việc định tuyến hàng đợi chi tiết trong tương lai
 @celery_app.task(name="backend.tasks.tasks.extract_audio")
 def extract_audio(job_id: str):
-    """Placeholder - audio extraction is handled within run_pipeline."""
+    """Placeholder - trích xuất âm thanh được xử lý trong run_pipeline."""
     pass
 
 
 @celery_app.task(name="backend.tasks.tasks.transcribe")
 def transcribe(job_id: str):
-    """Placeholder - transcription is handled within run_pipeline."""
+    """Placeholder - phiên âm được xử lý trong run_pipeline."""
     pass
 
 
 @celery_app.task(name="backend.tasks.tasks.diarize")
 def diarize(job_id: str):
-    """Placeholder - diarization will be implemented in Phase 6."""
+    """Placeholder - phân biệt người nói sẽ được triển khai trong Giai đoạn 6."""
     pass
 
 
 @celery_app.task(name="backend.tasks.tasks.translate")
 def translate(job_id: str):
-    """Placeholder - translation will be implemented in Phase 3."""
+    """Placeholder - dịch thuật sẽ được triển khai trong Giai đoạn 3."""
     pass
 
 
 @celery_app.task(name="backend.tasks.tasks.generate_subtitles")
 def generate_subtitles(job_id: str):
-    """Placeholder - subtitle generation is handled within run_pipeline."""
+    """Placeholder - tạo phụ đề được xử lý trong run_pipeline."""
     pass
 
 
 @celery_app.task(name="backend.tasks.tasks.burn_in_subtitles")
 def burn_in_subtitles(job_id: str):
-    """Placeholder - burn-in is handled within run_pipeline."""
+    """Placeholder - ghi phụ đề vào video được xử lý trong run_pipeline."""
     pass

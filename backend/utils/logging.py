@@ -1,4 +1,4 @@
-"""Structured logging configuration for AutoSubAI."""
+"""Cấu hình ghi log có cấu trúc cho AutoSubAI."""
 
 import logging
 import sys
@@ -6,28 +6,28 @@ from typing import Optional
 
 from backend.config.settings import settings
 
-# Log format with structured context
+# Định dạng log với ngữ cảnh có cấu trúc
 LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def setup_logging(level: Optional[str] = None) -> None:
-    """Configure logging for the application."""
+    """Cấu hình ghi log cho ứng dụng."""
     log_level = level or ("DEBUG" if settings.DEBUG else "INFO")
 
     root = logging.getLogger()
     root.setLevel(log_level)
 
-    # Clear existing handlers
+    # Xóa các handler hiện có
     root.handlers.clear()
 
-    # Console handler
+    # Handler xuất ra console
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(log_level)
     handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT))
     root.addHandler(handler)
 
-    # Reduce noise from third-party libraries
+    # Giảm log nhiễu từ các thư viện bên thứ ba
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -36,12 +36,12 @@ def setup_logging(level: Optional[str] = None) -> None:
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Get a named logger."""
+    """Lấy logger theo tên."""
     return logging.getLogger(name)
 
 
 class JobLogger:
-    """Logger that automatically includes job context in messages."""
+    """Logger tự động đính kèm ngữ cảnh công việc vào các thông điệp."""
 
     def __init__(self, job_id: str, logger_name: str = "pipeline"):
         self._logger = logging.getLogger(logger_name)

@@ -12,7 +12,7 @@ router = APIRouter(tags=["system"])
 
 
 def _get_ram_info() -> dict:
-    """Get RAM usage info. Works cross-platform."""
+    """Lấy thông tin sử dụng RAM. Hoạt động đa nền tảng."""
     try:
         import psutil
         mem = psutil.virtual_memory()
@@ -26,7 +26,7 @@ def _get_ram_info() -> dict:
 
 
 def _get_loaded_models() -> dict:
-    """Get info about available/loaded models."""
+    """Lấy thông tin các mô hình khả dụng/đã tải."""
     models: dict = {"whisper": [], "ollama": []}
 
     # Check whisper models on disk
@@ -129,7 +129,7 @@ async def system_info():
     ram_info = _get_ram_info()
     models_info = _get_loaded_models()
 
-    ffmpeg_version = "not found"
+    ffmpeg_version = "không tìm thấy"
     try:
         result = subprocess.run(
             ["ffmpeg", "-version"], capture_output=True, text=True, timeout=5
