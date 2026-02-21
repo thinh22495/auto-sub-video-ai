@@ -25,6 +25,7 @@ celery_app.conf.update(
         "backend.tasks.tasks.translate": {"queue": "cpu_queue"},
         "backend.tasks.tasks.generate_subtitles": {"queue": "cpu_queue"},
         "backend.tasks.tasks.burn_in_subtitles": {"queue": "ffmpeg_queue"},
+        "backend.tasks.tasks.download_whisper_model": {"queue": "gpu_queue"},
     },
 )
 

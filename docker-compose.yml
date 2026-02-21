@@ -3,18 +3,28 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: production
+      target: development
     container_name: autosub-app
     ports:
       - "${AUTOSUB_PORT:-8080}:8000"
       - "${FRONTEND_PORT:-3000}:3000"
     volumes:
+      # Data volumes
       - ./data/videos:/data/videos
       - ./data/subtitles:/data/subtitles
       - ./data/output:/data/output
       - ./data/models:/data/models
       - ./data/db:/data/db
       - ./.env:/app/.env:ro
+      # Source code (hot-reload, no rebuild needed)
+      - ./backend:/app/backend
+      - ./frontend/src:/app/frontend-dev/src
+      - ./frontend/public:/app/frontend-dev/public
+      - ./frontend/tsconfig.json:/app/frontend-dev/tsconfig.json
+      - ./frontend/next.config.js:/app/frontend-dev/next.config.js
+      - ./frontend/postcss.config.js:/app/frontend-dev/postcss.config.js
+      # Dev supervisord config
+      - ./supervisord.dev.conf:/etc/supervisor/conf.d/supervisord.conf:ro
     environment:
       - AUTOSUB_REDIS_URL=redis://autosub-redis:6379/0
       - AUTOSUB_OLLAMA_BASE_URL=http://autosub-ollama:11434

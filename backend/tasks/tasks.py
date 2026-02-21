@@ -195,3 +195,63 @@ def generate_subtitles(job_id: str):
 def burn_in_subtitles(job_id: str):
     """Placeholder - ghi phụ đề vào video được xử lý trong run_pipeline."""
     pass
+
+
+@celery_app.task(
+    name="backend.tasks.tasks.download_whisper_model",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+)
+def download_whisper_model(self, model_name: str):
+    """
+    Tải mô hình Whisper trong background.
+    Tiến trình được phát qua Redis pub/sub -> WebSocket.
+    """
+    task_id = self.request.id
+    _publish_model_download_progress(task_id, model_name, "downloading", 0, "Đang bắt đầu tải mô hình...")
+
+    try:
+        from backend.models.whisper_manager import WHISPER_MODELS, download_model
+
+        if model_name not in WHISPER_MODELS:
+            raise ValueError(f"Mô hình không xác định: {model_name}")
+
+        _publish_model_download_progress(task_id, model_name, "downloading", 10, f"Đang tải mô hình {model_name}...")
+
+        result = download_model(model_name)
+
+        _publish_model_download_progress(task_id, model_name, "completed", 100, f"Đã tải xong mô hình {model_name}")
+
+        return {
+            "task_id": task_id,
+            "model_name": model_name,
+            "status": "completed",
+            **result,
+        }
+
+    except Exception as exc:
+        error_msg = str(exc)[:500]
+        logger.exception("Tải mô hình thất bại: %s", model_name)
+        _publish_model_download_progress(task_id, model_name, "failed", 0, f"Lỗi: {error_msg}")
+        raise
+
+
+def _publish_model_download_progress(task_id: str, model_name: str, status: str, progress: float, message: str):
+    """Phát tiến trình tải mô hình qua Redis pub/sub."""
+    try:
+        import redis as sync_redis
+        r = sync_redis.from_url(settings.REDIS_URL, decode_responses=True)
+        data = json.dumps({
+            "task_id": task_id,
+            "model_name": model_name,
+            "status": status,
+            "progress_percent": progress,
+            "message": message,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        r.publish(f"model_download:{task_id}", data)
+        r.set(f"model_download:{task_id}:latest", data, ex=3600)
+        r.close()
+    except Exception as e:
+        logger.warning("Không thể phát tiến trình tải mô hình: %s", e)

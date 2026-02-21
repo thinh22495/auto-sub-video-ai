@@ -101,3 +101,16 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD curl -f http://localhost:8000/api/health || exit 1
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+
+# =============================================================================
+# Stage 4: Development image
+# Source code is mounted via volumes, no need to rebuild on code changes.
+# =============================================================================
+FROM production AS development
+
+# Install frontend dev dependencies (node_modules stays in image)
+COPY frontend/package*.json /app/frontend-dev/
+RUN cd /app/frontend-dev && npm install
+
+# Dev supervisord config (mounted from host or use default)
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

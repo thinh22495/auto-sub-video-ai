@@ -74,6 +74,63 @@ async def job_progress_ws(websocket: WebSocket, job_id: str):
         await r.close()
 
 
+@router.websocket("/ws/model-download/{task_id}")
+async def model_download_progress_ws(websocket: WebSocket, task_id: str):
+    """
+    WebSocket cho tiến trình tải mô hình Whisper.
+    Đăng ký kênh Redis pub/sub và chuyển tiếp tiến trình đến client.
+    """
+    await websocket.accept()
+
+    # Send latest cached progress if available
+    try:
+        r_sync = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+        latest = await r_sync.get(f"model_download:{task_id}:latest")
+        if latest:
+            await websocket.send_text(latest)
+        await r_sync.close()
+    except Exception:
+        pass
+
+    # Subscribe to Redis pub/sub
+    r = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    pubsub = r.pubsub()
+
+    try:
+        await pubsub.subscribe(f"model_download:{task_id}")
+
+        while True:
+            message = await pubsub.get_message(
+                ignore_subscribe_messages=True,
+                timeout=1.0,
+            )
+            if message and message["type"] == "message":
+                await websocket.send_text(message["data"])
+
+                data = json.loads(message["data"])
+                if data.get("status") in ("completed", "failed"):
+                    break
+
+            try:
+                await asyncio.wait_for(
+                    websocket.receive_text(),
+                    timeout=0.01,
+                )
+            except asyncio.TimeoutError:
+                pass
+            except WebSocketDisconnect:
+                break
+
+    except WebSocketDisconnect:
+        logger.debug("WebSocket ngắt kết nối cho tải mô hình %s", task_id)
+    except Exception as e:
+        logger.error("Lỗi WebSocket cho tải mô hình %s: %s", task_id, e)
+    finally:
+        await pubsub.unsubscribe(f"model_download:{task_id}")
+        await pubsub.close()
+        await r.close()
+
+
 @router.websocket("/ws/batch/{batch_id}")
 async def batch_progress_ws(websocket: WebSocket, batch_id: str):
     """
