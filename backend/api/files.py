@@ -200,6 +200,64 @@ def download_file(path: str = Query(..., description="File path to download")):
     )
 
 
+# Formats browsers can play natively via <video> element
+_BROWSER_PLAYABLE = {".mp4", ".webm", ".mov", ".m4v", ".ogg"}
+
+
+def _get_remuxed_mp4(original_path: Path) -> Path:
+    """Remux video sang MP4 để trình duyệt phát được. Cache kết quả."""
+    import hashlib
+    import subprocess
+
+    cache_dir = Path(settings.TEMP_DIR) / "remux_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    # Tên file cache dựa trên đường dẫn gốc
+    path_hash = hashlib.md5(str(original_path).encode()).hexdigest()[:12]
+    cached = cache_dir / f"{original_path.stem}_{path_hash}.mp4"
+
+    if cached.exists():
+        return cached
+
+    logger.info("Remuxing video cho trình duyệt: %s -> %s", original_path, cached)
+
+    cmd = [
+        "ffmpeg",
+        "-hide_banner",
+        "-y",
+        "-i", str(original_path),
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-movflags", "+faststart",
+        cached_tmp := str(cached) + ".tmp.mp4",
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    if result.returncode != 0:
+        # Nếu copy codec thất bại (codec không tương thích), thử re-encode
+        logger.warning("Remux copy failed, re-encoding: %s", result.stderr[:200])
+        cmd = [
+            "ffmpeg",
+            "-hide_banner",
+            "-y",
+            "-i", str(original_path),
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "23",
+            "-c:a", "aac",
+            "-movflags", "+faststart",
+            cached_tmp,
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        if result.returncode != 0:
+            raise RuntimeError(f"Remux failed: {result.stderr[:300]}")
+
+    # Atomic rename
+    import shutil
+    shutil.move(cached_tmp, str(cached))
+    return cached
+
+
 @router.get("/video/stream")
 def stream_video(path: str = Query(..., description="Video file path")):
     """Phát trực tuyến video cho xem trước trên trình duyệt (hỗ trợ range requests)."""
@@ -216,17 +274,20 @@ def stream_video(path: str = Query(..., description="Video file path")):
         raise HTTPException(status_code=403, detail="Truy cập bị từ chối")
 
     suffix = p.suffix.lower()
-    media_types = {
-        ".mp4": "video/mp4",
-        ".mkv": "video/x-matroska",
-        ".webm": "video/webm",
-        ".mov": "video/quicktime",
-    }
 
-    return FileResponse(
-        str(p),
-        media_type=media_types.get(suffix, "video/mp4"),
-    )
+    # Nếu format không phát được trên trình duyệt, remux sang MP4
+    if suffix not in _BROWSER_PLAYABLE:
+        try:
+            remuxed = _get_remuxed_mp4(p)
+            return FileResponse(str(remuxed), media_type="video/mp4")
+        except Exception as e:
+            logger.error("Remux failed for %s: %s", path, e)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Không thể chuyển đổi video để phát trên trình duyệt: {e}",
+            )
+
+    return FileResponse(str(p), media_type="video/mp4")
 
 
 @router.delete("/delete")

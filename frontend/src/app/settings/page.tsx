@@ -15,6 +15,8 @@ import {
   FolderOpen,
   HardDrive,
   CheckCircle2,
+  AudioLines,
+  Languages,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +45,14 @@ const CATEGORY_META: Record<string, { icon: React.ReactNode; label: string }> =
     },
     processing: { icon: <Cog className="h-4 w-4" />, label: "Xử lý" },
     cleanup: { icon: <Trash2 className="h-4 w-4" />, label: "Dọn dẹp" },
+    transcription: {
+      icon: <AudioLines className="h-4 w-4" />,
+      label: "Phiên âm (VAD)",
+    },
+    translation: {
+      icon: <Languages className="h-4 w-4" />,
+      label: "Dịch thuật",
+    },
   };
 
 export default function SettingsPage() {
@@ -337,12 +347,13 @@ function SettingField({
               </option>
             ))}
           </select>
-        ) : setting.type === "number" ? (
+        ) : setting.type === "number" || setting.type === "float" ? (
           <input
             type="number"
             value={value}
             min={setting.min}
             max={setting.max}
+            step={setting.type === "float" ? "0.01" : "1"}
             onChange={(e) => onChange(e.target.value)}
             className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
           />

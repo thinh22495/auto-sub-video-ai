@@ -43,27 +43,30 @@ def extract_audio(
         "-acodec", "pcm_s16le",         # 16-bit PCM
         "-ar", str(sample_rate),        # sample rate
         "-ac", "1",                     # mono
-        "-progress", "pipe:1",          # progress to stdout
-        output_path,
     ]
+
+    use_progress = on_progress is not None and duration > 0
+    if use_progress:
+        cmd.extend(["-progress", "pipe:1"])
+
+    cmd.append(output_path)
 
     logger.info("Đang trích xuất âm thanh: %s -> %s", input_path, output_path)
 
     process = subprocess.Popen(
         cmd,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.PIPE if use_progress else subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
     )
 
-    if process.stdout and on_progress and duration > 0:
+    if use_progress and process.stdout:
         _parse_ffmpeg_progress(process.stdout, duration, on_progress, "Extracting audio")
 
-    process.wait()
+    _, stderr_output = process.communicate()
 
     if process.returncode != 0:
-        stderr = process.stderr.read() if process.stderr else ""
-        raise RuntimeError(f"FFmpeg audio extraction failed (code {process.returncode}): {stderr[:500]}")
+        raise RuntimeError(f"FFmpeg audio extraction failed (code {process.returncode}): {(stderr_output or '')[:500]}")
 
     logger.info("Trích xuất âm thanh hoàn tất: %s", output_path)
     return output_path
@@ -130,26 +133,29 @@ def burn_subtitles(
     else:
         cmd.extend(["-preset", enc_preset, "-crf", str(crf)])
 
-    cmd.extend(["-progress", "pipe:1", output_path])
+    use_progress = on_progress is not None and duration > 0
+    if use_progress:
+        cmd.extend(["-progress", "pipe:1"])
+
+    cmd.append(output_path)
 
     logger.info("Đang ghi phụ đề: %s + %s -> %s (encoder: %s, crf=%s, preset=%s)",
                 input_video, subtitle_file, output_path, encoder, crf, enc_preset)
 
     process = subprocess.Popen(
         cmd,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.PIPE if use_progress else subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
     )
 
-    if process.stdout and on_progress and duration > 0:
+    if use_progress and process.stdout:
         _parse_ffmpeg_progress(process.stdout, duration, on_progress, "Burning subtitles")
 
-    process.wait()
+    _, stderr_output = process.communicate()
 
     if process.returncode != 0:
-        stderr = process.stderr.read() if process.stderr else ""
-        raise RuntimeError(f"FFmpeg burn-in failed (code {process.returncode}): {stderr[:500]}")
+        raise RuntimeError(f"FFmpeg burn-in failed (code {process.returncode}): {(stderr_output or '')[:500]}")
 
     logger.info("Ghi phụ đề hoàn tất: %s", output_path)
     return output_path

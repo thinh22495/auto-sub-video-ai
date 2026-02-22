@@ -44,6 +44,7 @@ export default function WaveformDisplay({
   const containerRef = useRef<HTMLDivElement>(null);
   const audioDataRef = useRef<Float32Array | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const speakerMapRef = useRef(new Map<string, number>());
 
   // Load and decode audio data
@@ -52,10 +53,16 @@ export default function WaveformDisplay({
 
     let cancelled = false;
     setLoading(true);
+    setError(false);
 
     const loadAudio = async () => {
       try {
         const response = await fetch(audioUrl);
+        if (!response.ok) {
+          console.error("Audio fetch failed:", response.status, response.statusText);
+          if (!cancelled) setError(true);
+          return;
+        }
         const arrayBuffer = await response.arrayBuffer();
         const audioContext = new AudioContext();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -80,6 +87,7 @@ export default function WaveformDisplay({
         audioContext.close();
       } catch (err) {
         console.error("Failed to load audio for waveform:", err);
+        if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -209,6 +217,11 @@ export default function WaveformDisplay({
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-card/80 text-xs text-muted-foreground">
           Đang tải sóng âm...
+        </div>
+      )}
+      {error && !loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-card/80 text-xs text-muted-foreground">
+          Không thể tải sóng âm
         </div>
       )}
       <canvas

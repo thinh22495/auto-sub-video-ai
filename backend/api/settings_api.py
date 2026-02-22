@@ -89,6 +89,62 @@ SETTINGS_SCHEMA: dict[str, dict] = {
         "max": 365,
         "category": "cleanup",
     },
+    # --- Phiên âm (VAD) ---
+    "vad_threshold": {
+        "type": "float",
+        "label": "Ngưỡng phát hiện giọng nói (VAD)",
+        "description": "Ngưỡng 0.0-1.0. Giảm để phát hiện nhiều giọng nói hơn (phù hợp video có nhạc nền), tăng để lọc tạp âm tốt hơn.",
+        "default": "0.3",
+        "min": 0.1,
+        "max": 0.9,
+        "category": "transcription",
+    },
+    "vad_min_silence_duration_ms": {
+        "type": "number",
+        "label": "Thời gian im lặng tối thiểu (ms)",
+        "description": "Khoảng im lặng tối thiểu (mili giây) để chia đoạn. Giảm để chia nhiều đoạn hơn.",
+        "default": "300",
+        "min": 100,
+        "max": 2000,
+        "category": "transcription",
+    },
+    "vad_min_speech_duration_ms": {
+        "type": "number",
+        "label": "Thời gian nói tối thiểu (ms)",
+        "description": "Đoạn nói ngắn hơn giá trị này (mili giây) sẽ bị bỏ qua.",
+        "default": "100",
+        "min": 0,
+        "max": 1000,
+        "category": "transcription",
+    },
+    "vad_speech_pad_ms": {
+        "type": "number",
+        "label": "Đệm giọng nói (ms)",
+        "description": "Thêm padding (mili giây) vào đầu và cuối mỗi đoạn nói được phát hiện.",
+        "default": "300",
+        "min": 0,
+        "max": 1000,
+        "category": "transcription",
+    },
+    # --- Dịch thuật ---
+    "translation_temperature": {
+        "type": "float",
+        "label": "Nhiệt độ dịch thuật",
+        "description": "Nhiệt độ lấy mẫu LLM (0.0-1.0). Thấp hơn = chính xác hơn, cao hơn = sáng tạo hơn.",
+        "default": "0.3",
+        "min": 0.0,
+        "max": 1.0,
+        "category": "translation",
+    },
+    "translation_batch_size": {
+        "type": "number",
+        "label": "Kích thước lô dịch",
+        "description": "Số đoạn phụ đề gửi cho LLM mỗi lần gọi. Lớn hơn = nhanh hơn nhưng có thể giảm chất lượng.",
+        "default": "8",
+        "min": 1,
+        "max": 50,
+        "category": "translation",
+    },
 }
 
 
@@ -164,9 +220,9 @@ def update_single_setting(key: str, body: SettingUpdate, db: Session = Depends(g
                 detail=f"Giá trị không hợp lệ. Các tùy chọn: {schema['options']}",
             )
 
-    if schema["type"] == "number":
+    if schema["type"] in ("number", "float"):
         try:
-            num = int(body.value)
+            num = float(body.value) if schema["type"] == "float" else int(body.value)
             if "min" in schema and num < schema["min"]:
                 raise HTTPException(status_code=400, detail=f"Giá trị phải >= {schema['min']}")
             if "max" in schema and num > schema["max"]:
@@ -201,9 +257,9 @@ def update_bulk_settings(body: SettingsBulkUpdate, db: Session = Depends(get_db)
             if value not in schema["options"]:
                 continue
 
-        if schema["type"] == "number":
+        if schema["type"] in ("number", "float"):
             try:
-                num = int(value)
+                num = float(value) if schema["type"] == "float" else int(value)
                 if "min" in schema and num < schema["min"]:
                     continue
                 if "max" in schema and num > schema["max"]:

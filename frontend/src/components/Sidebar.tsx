@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   Home,
+  List,
   PlusCircle,
   Layers,
   Settings,
@@ -14,7 +15,8 @@ import {
 } from "lucide-react";
 
 const navigation = [
-  { name: "Trang chủ", href: "/", icon: Home },
+  { name: "Trang chủ", href: "/", icon: Home, exact: true },
+  { name: "Danh sách", href: "/jobs/", icon: List, exact: true },
   { name: "Tạo mới", href: "/jobs/new/", icon: PlusCircle },
   { name: "Hàng loạt", href: "/batch/", icon: Layers },
   { name: "Mẫu style", href: "/presets/", icon: Palette },
@@ -41,10 +43,10 @@ export function Sidebar() {
       {/* Điều hướng */}
       <nav className="flex-1 space-y-1 p-3">
         {navigation.map((item) => {
-          const isActive =
-            item.href === "/"
-              ? pathname === "/" || pathname === ""
-              : pathname.startsWith(item.href.replace(/\/$/, ""));
+          const hrefNormalized = item.href.replace(/\/$/, "");
+          const isActive = item.exact
+            ? pathname === item.href || pathname === hrefNormalized
+            : pathname.startsWith(hrefNormalized);
 
           return (
             <Link

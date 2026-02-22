@@ -86,6 +86,7 @@ def run_pipeline(self, job_id: str):
             ollama_model=job.ollama_model,
             subtitle_style=subtitle_style,
             video_preset=job.video_preset,
+            db=db,
             on_progress=on_progress,
         )
 

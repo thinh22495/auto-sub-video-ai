@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api-client";
 
 export interface AppSetting {
-  type: "text" | "number" | "select";
+  type: "text" | "number" | "float" | "select";
   label: string;
   description: string;
   default: string;

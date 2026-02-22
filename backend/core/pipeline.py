@@ -6,8 +6,11 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from sqlalchemy.orm import Session
+
 from backend.config.settings import settings
 from backend.core.segment import ProgressInfo, Segment, TranscriptionResult
+from backend.db.crud import get_setting
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +44,7 @@ class SubtitlePipeline:
         ollama_model: str | None = None,
         subtitle_style: dict | None = None,
         video_preset: str | None = None,
+        db: Session | None = None,
         on_progress: ProgressCallback | None = None,
     ):
         self.input_path = input_path
@@ -53,6 +57,7 @@ class SubtitlePipeline:
         self.ollama_model = ollama_model
         self.subtitle_style = subtitle_style
         self.video_preset = video_preset
+        self.db = db
         self.on_progress = on_progress
 
         # Tính tổng số bước
@@ -66,6 +71,28 @@ class SubtitlePipeline:
 
         self._current_step = 0
         self._results: dict = {}
+
+    def _get_setting(self, key: str, default: str) -> str:
+        """Đọc cài đặt từ DB, fallback về giá trị mặc định."""
+        if self.db is None:
+            return default
+        try:
+            value = get_setting(self.db, key)
+            return value if value is not None else default
+        except Exception:
+            return default
+
+    def _get_setting_float(self, key: str, default: float) -> float:
+        try:
+            return float(self._get_setting(key, str(default)))
+        except (ValueError, TypeError):
+            return default
+
+    def _get_setting_int(self, key: str, default: int) -> int:
+        try:
+            return int(self._get_setting(key, str(default)))
+        except (ValueError, TypeError):
+            return default
 
     def _report(self, percent: float, message: str):
         if self.on_progress:
@@ -164,11 +191,19 @@ class SubtitlePipeline:
             overall = base + (percent / 100) * step_range
             self._report(overall, msg)
 
+        vad_params = {
+            "threshold": self._get_setting_float("vad_threshold", 0.3),
+            "min_silence_duration_ms": self._get_setting_int("vad_min_silence_duration_ms", 300),
+            "min_speech_duration_ms": self._get_setting_int("vad_min_speech_duration_ms", 100),
+            "speech_pad_ms": self._get_setting_int("vad_speech_pad_ms", 300),
+        }
+
         result = transcribe(
             audio_path=audio_path,
             model_name=self.whisper_model,
             language=self.source_language,
             on_progress=on_whisper_progress,
+            vad_parameters=vad_params,
         )
 
         return result
@@ -221,6 +256,8 @@ class SubtitlePipeline:
             source_lang=source_name,
             target_lang=target_name,
             model=self.ollama_model,
+            batch_size=self._get_setting_int("translation_batch_size", 8),
+            temperature=self._get_setting_float("translation_temperature", 0.3),
             on_progress=on_translate_progress,
         )
 

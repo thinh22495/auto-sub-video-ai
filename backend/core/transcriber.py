@@ -41,6 +41,7 @@ def transcribe(
     model_name: str = "large-v3-turbo",
     language: str | None = None,
     on_progress: ProgressCallback | None = None,
+    vad_parameters: dict | None = None,
 ) -> TranscriptionResult:
     """
     Phiên âm tệp âm thanh sử dụng faster-whisper.
@@ -62,16 +63,21 @@ def transcribe(
     start_time = time.time()
 
     # Chạy phiên âm
+    default_vad = dict(
+        threshold=0.3,
+        min_silence_duration_ms=300,
+        min_speech_duration_ms=100,
+        speech_pad_ms=300,
+    )
+    vad_params = vad_parameters or default_vad
+
     segments_iter, info = model.transcribe(
         audio_path,
         language=language,
         beam_size=5,
         word_timestamps=True,
         vad_filter=True,
-        vad_parameters=dict(
-            min_silence_duration_ms=500,
-            speech_pad_ms=200,
-        ),
+        vad_parameters=vad_params,
     )
 
     detected_language = info.language

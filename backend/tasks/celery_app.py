@@ -19,6 +19,7 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     result_expires=86400,  # 24 hours
     task_routes={
+        "backend.tasks.tasks.run_pipeline": {"queue": "gpu_queue"},
         "backend.tasks.tasks.extract_audio": {"queue": "ffmpeg_queue"},
         "backend.tasks.tasks.transcribe": {"queue": "gpu_queue"},
         "backend.tasks.tasks.diarize": {"queue": "gpu_queue"},

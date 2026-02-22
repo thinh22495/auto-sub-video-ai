@@ -34,6 +34,7 @@ def translate_segments(
     max_chars: int = 42,
     batch_size: int = 8,
     context_size: int = 2,
+    temperature: float = 0.3,
     on_progress: ProgressCallback | None = None,
 ) -> list[Segment]:
     """
@@ -86,14 +87,27 @@ def translate_segments(
                 model=model,
                 system=system_prompt,
                 prompt=user_message,
+                temperature=temperature,
+            )
+
+            logger.debug(
+                "Ollama response for batch %d-%d: %s",
+                batch_start, batch_end, response_text[:500],
             )
 
             # Phân tích phản hồi và gán bản dịch
             translations = _parse_translation_response(response_text, len(batch))
 
             for i, translation in enumerate(translations):
-                if translation and batch_start + i < total:
-                    segments[batch_start + i].translated_text = translation
+                if batch_start + i < total:
+                    if translation:
+                        segments[batch_start + i].translated_text = translation
+                    else:
+                        logger.warning(
+                            "Empty translation for segment %d, using original text",
+                            batch_start + i,
+                        )
+                        segments[batch_start + i].translated_text = segments[batch_start + i].text
 
             translated_count += len(batch)
 
@@ -196,7 +210,7 @@ def _parse_translation_response(response: str, expected_count: int) -> list[str]
     return translations[:expected_count]
 
 
-def _call_ollama(model: str, system: str, prompt: str) -> str:
+def _call_ollama(model: str, system: str, prompt: str, temperature: float = 0.3) -> str:
     """Gọi API chat Ollama và trả về văn bản phản hồi."""
     url = f"{settings.OLLAMA_BASE_URL}/api/chat"
 
@@ -208,7 +222,7 @@ def _call_ollama(model: str, system: str, prompt: str) -> str:
         ],
         "stream": False,
         "options": {
-            "temperature": 0.3,
+            "temperature": temperature,
             "top_p": 0.9,
             "num_predict": 2048,
         },

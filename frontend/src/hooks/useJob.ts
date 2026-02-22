@@ -30,25 +30,51 @@ export function useJob(jobId: string | null) {
   return { job, loading, error, refetch: fetchJob };
 }
 
-export function useJobs() {
+interface JobsListResponse {
+  jobs: Job[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+interface UseJobsOptions {
+  skip?: number;
+  limit?: number;
+  status?: string | null;
+}
+
+export function useJobs(options: UseJobsOptions = {}) {
+  const { skip = 0, limit = 50, status = null } = options;
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.get<Job[]>("/jobs");
-      setJobs(data);
+      const params: Record<string, string> = {
+        skip: String(skip),
+        limit: String(limit),
+      };
+      if (status) params.status = status;
+      const data = await api.get<JobsListResponse | Job[]>("/jobs", { params });
+      if (Array.isArray(data)) {
+        setJobs(data);
+        setTotal(data.length);
+      } else {
+        setJobs(data.jobs);
+        setTotal(data.total);
+      }
     } catch (err) {
       console.error("Failed to fetch jobs:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [skip, limit, status]);
 
   useEffect(() => {
     fetchJobs();
   }, [fetchJobs]);
 
-  return { jobs, loading, refetch: fetchJobs };
+  return { jobs, total, loading, refetch: fetchJobs };
 }

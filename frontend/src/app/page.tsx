@@ -29,8 +29,8 @@ export default function DashboardPage() {
       .then(setHealth)
       .catch((err) => setError(err.message));
     api
-      .get<Job[]>("/jobs", { params: { limit: "15" } })
-      .then(setJobs)
+      .get<{ jobs: Job[] }>("/jobs", { params: { limit: "15" } })
+      .then((data) => setJobs(Array.isArray(data) ? data : data.jobs))
       .catch(() => {});
     api
       .get<Batch[]>("/batch", { params: { limit: "5" } })
@@ -225,9 +225,12 @@ export default function DashboardPage() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Công việc gần đây</h2>
           {jobs.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              Hiển thị {jobs.length}
-            </span>
+            <Link
+              href="/jobs/"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Xem tất cả
+            </Link>
           )}
         </div>
         {jobs.length === 0 ? (

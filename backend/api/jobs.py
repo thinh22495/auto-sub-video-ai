@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -175,7 +175,13 @@ def list_jobs(
 ):
     """Liệt kê tất cả công việc, có thể lọc theo trạng thái."""
     jobs = crud.get_jobs(db, skip=skip, limit=limit, status=status)
-    return [_job_to_response(j) for j in jobs]
+    total = crud.count_jobs(db, status=status)
+    return {
+        "jobs": [_job_to_response(j) for j in jobs],
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.get("/{job_id}")
@@ -522,15 +528,10 @@ def stream_audio(job_id: str, db: Session = Depends(get_db)):
     if not audio_path.exists():
         raise HTTPException(status_code=404, detail="Could not extract audio")
 
-    def iterfile():
-        with open(audio_path, "rb") as f:
-            while chunk := f.read(64 * 1024):
-                yield chunk
-
-    return StreamingResponse(
-        iterfile(),
+    return FileResponse(
+        str(audio_path),
         media_type="audio/wav",
-        headers={"Content-Disposition": f"inline; filename={audio_path.name}"},
+        filename=audio_path.name,
     )
 
 

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.db.models import AppSetting, Job
@@ -18,6 +19,14 @@ def get_jobs(
     if status:
         query = query.filter(Job.status == status)
     return query.order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def count_jobs(db: Session, status: str | None = None) -> int:
+    """Đếm tổng số công việc, có thể lọc theo trạng thái."""
+    query = db.query(func.count(Job.id))
+    if status:
+        query = query.filter(Job.status == status)
+    return query.scalar()
 
 
 def create_job(db: Session, **kwargs) -> Job:
