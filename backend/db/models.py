@@ -36,6 +36,7 @@ class Job(Base):
     ollama_model: Mapped[str | None] = mapped_column(String, nullable=True)
     subtitle_style: Mapped[str | None] = mapped_column(Text, nullable=True)  # Kiểu JSON
     video_preset: Mapped[str | None] = mapped_column(String, nullable=True)
+    video_output_settings: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
     priority: Mapped[int] = mapped_column(Integer, default=0)
     current_step: Mapped[str | None] = mapped_column(String, nullable=True)
     progress_percent: Mapped[float] = mapped_column(Float, default=0.0)

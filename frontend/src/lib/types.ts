@@ -16,6 +16,7 @@ export interface Job {
   ollama_model: string | null;
   subtitle_style: SubtitleStyle | null;
   video_preset: string | null;
+  video_output_settings: VideoOutputSettings | null;
   priority: number;
   current_step: string | null;
   progress_percent: number;
@@ -46,6 +47,17 @@ export interface SubtitleStyle {
   max_lines: number;
 }
 
+export interface VideoOutputSettings {
+  output_format: string;          // "mp4" | "mkv" | "webm"
+  video_codec?: string | null;    // "h264" | "h265" | "vp9" | null (auto)
+  crf: number;                    // 0-51, default 23
+  preset: string;                 // "ultrafast".."veryslow", default "medium"
+  resolution?: string | null;     // "1080p" | "720p" | "480p" | null
+  audio_codec: string;            // "copy" | "aac" | "opus"
+  audio_bitrate: number;          // kbps, default 128
+  fps?: number | null;            // 60, 30, 24, null
+}
+
 export interface JobCreate {
   input_path: string;
   source_language?: string | null;
@@ -57,6 +69,7 @@ export interface JobCreate {
   ollama_model?: string;
   subtitle_style?: SubtitleStyle;
   video_preset?: string;
+  video_output_settings?: VideoOutputSettings;
   priority?: number;
 }
 
@@ -94,6 +107,7 @@ export interface BatchCreate {
   ollama_model?: string;
   subtitle_style?: SubtitleStyle;
   video_preset?: string;
+  video_output_settings?: VideoOutputSettings;
   priority?: number;
 }
 

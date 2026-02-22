@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
-import type { JobCreate, Preset, SubtitleStyle } from "@/lib/types";
+import type { JobCreate, Preset, SubtitleStyle, VideoOutputSettings } from "@/lib/types";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { SubtitlePreview } from "@/components/SubtitlePreview";
 import { SubtitleStyler } from "@/components/SubtitleStyler";
 import { FileExplorer } from "@/components/FileExplorer";
+import { VideoOutputOptions } from "@/components/VideoOutputOptions";
 import {
   Play,
   FileVideo,
@@ -20,6 +21,7 @@ import {
   ChevronDown,
   ChevronUp,
   FolderOpen,
+  Film,
 } from "lucide-react";
 
 interface OllamaModelOption {
@@ -66,6 +68,17 @@ export default function NewJobPage() {
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>(DEFAULT_STYLE);
   const [showStyleEditor, setShowStyleEditor] = useState(false);
   const [showFileBrowser, setShowFileBrowser] = useState(false);
+  const [enableVideoConvert, setEnableVideoConvert] = useState(false);
+  const [videoOutputSettings, setVideoOutputSettings] = useState<VideoOutputSettings>({
+    output_format: "mp4",
+    video_codec: null,
+    crf: 23,
+    preset: "medium",
+    resolution: null,
+    audio_codec: "copy",
+    audio_bitrate: 128,
+    fps: null,
+  });
 
   useEffect(() => {
     // Load Ollama models and presets in parallel
@@ -93,6 +106,15 @@ export default function NewJobPage() {
       const preset = presets.find((p) => p.id === presetId);
       if (preset) {
         setSubtitleStyle({ ...DEFAULT_STYLE, ...preset.subtitle_style });
+        // Pre-fill video settings từ preset
+        if (preset.video_settings) {
+          const vs = preset.video_settings as Record<string, unknown>;
+          setVideoOutputSettings((prev) => ({
+            ...prev,
+            crf: typeof vs.crf === "number" ? vs.crf : prev.crf,
+            preset: typeof vs.preset === "string" ? vs.preset : prev.preset,
+          }));
+        }
       }
     } else {
       setSubtitleStyle(DEFAULT_STYLE);
@@ -142,6 +164,7 @@ export default function NewJobPage() {
         ollama_model: needsTranslation ? ollamaModel : undefined,
         subtitle_style: subtitleStyle,
         video_preset: videoPreset,
+        video_output_settings: enableVideoConvert ? videoOutputSettings : undefined,
       };
 
       const job = await api.post<{ id: string }>("/jobs", body);
@@ -302,6 +325,32 @@ export default function NewJobPage() {
               </span>
             </label>
           </div>
+        </Section>
+
+        {/* Video Convert */}
+        <Section icon={<Film className="h-5 w-5" />} title="Chuyển đổi video">
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={enableVideoConvert}
+              onChange={(e) => setEnableVideoConvert(e.target.checked)}
+              className="h-4 w-4 rounded border-border bg-muted text-primary focus:ring-primary"
+            />
+            <span className="text-sm text-foreground">
+              Chuyển đổi định dạng / chất lượng video
+            </span>
+          </label>
+          {enableVideoConvert && (
+            <div className="mt-3">
+              <VideoOutputOptions
+                settings={videoOutputSettings}
+                onChange={setVideoOutputSettings}
+              />
+            </div>
+          )}
+          <p className="mt-1 text-xs text-muted-foreground">
+            Có thể dùng độc lập hoặc kết hợp với gắn phụ đề
+          </p>
         </Section>
 
         {/* Subtitle Style & Preset */}

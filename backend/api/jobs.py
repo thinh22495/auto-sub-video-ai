@@ -41,6 +41,17 @@ class SubtitleStyleSchema(BaseModel):
     max_lines: int = 2
 
 
+class VideoOutputSettingsSchema(BaseModel):
+    output_format: str = "mp4"
+    video_codec: Optional[str] = None  # "h264", "h265", "vp9", None=auto
+    crf: int = Field(default=23, ge=0, le=51)
+    preset: str = "medium"
+    resolution: Optional[str] = None  # "1080p", "720p", "480p"
+    audio_codec: str = "copy"  # "copy", "aac", "opus"
+    audio_bitrate: int = Field(default=128, ge=32, le=512)
+    fps: Optional[int] = None  # 60, 30, 24
+
+
 class JobCreateRequest(BaseModel):
     input_path: str
     source_language: Optional[str] = None
@@ -52,6 +63,7 @@ class JobCreateRequest(BaseModel):
     ollama_model: Optional[str] = None
     subtitle_style: Optional[SubtitleStyleSchema] = None
     video_preset: Optional[str] = None
+    video_output_settings: Optional[VideoOutputSettingsSchema] = None
     priority: int = 0
 
 
@@ -112,6 +124,7 @@ def _job_to_response(job) -> dict:
         "ollama_model": job.ollama_model,
         "subtitle_style": _parse_json(job.subtitle_style),
         "video_preset": job.video_preset,
+        "video_output_settings": _parse_json(job.video_output_settings),
         "priority": job.priority,
         "current_step": job.current_step,
         "progress_percent": job.progress_percent or 0,
@@ -140,6 +153,24 @@ def create_job(req: JobCreateRequest, db: Session = Depends(get_db)):
         if fmt not in valid_formats:
             raise HTTPException(status_code=400, detail=f"Invalid format: {fmt}. Valid: {valid_formats}")
 
+    # Kiểm tra tương thích video output settings
+    if req.video_output_settings:
+        vs = req.video_output_settings
+        if vs.output_format not in ("mp4", "mkv", "webm"):
+            raise HTTPException(status_code=400, detail=f"Invalid video format: {vs.output_format}. Valid: mp4, mkv, webm")
+        if vs.video_codec and vs.video_codec not in ("h264", "h265", "vp9"):
+            raise HTTPException(status_code=400, detail=f"Invalid video codec: {vs.video_codec}. Valid: h264, h265, vp9")
+        if vs.output_format == "webm" and vs.video_codec and vs.video_codec != "vp9":
+            raise HTTPException(status_code=400, detail="WebM only supports VP9 codec")
+        if vs.output_format == "mp4" and vs.video_codec == "vp9":
+            raise HTTPException(status_code=400, detail="MP4 does not support VP9. Use MKV or WebM")
+        if vs.resolution and vs.resolution not in ("1080p", "720p", "480p"):
+            raise HTTPException(status_code=400, detail=f"Invalid resolution: {vs.resolution}. Valid: 1080p, 720p, 480p")
+        if vs.audio_codec not in ("copy", "aac", "opus"):
+            raise HTTPException(status_code=400, detail=f"Invalid audio codec: {vs.audio_codec}. Valid: copy, aac, opus")
+        if vs.preset not in ("ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"):
+            raise HTTPException(status_code=400, detail=f"Invalid preset: {vs.preset}")
+
     # Tạo công việc trong cơ sở dữ liệu
     job = crud.create_job(
         db,
@@ -154,6 +185,7 @@ def create_job(req: JobCreateRequest, db: Session = Depends(get_db)):
         ollama_model=req.ollama_model,
         subtitle_style=json.dumps(req.subtitle_style.model_dump()) if req.subtitle_style else None,
         video_preset=req.video_preset,
+        video_output_settings=json.dumps(req.video_output_settings.model_dump()) if req.video_output_settings else None,
         priority=req.priority,
     )
 

@@ -86,6 +86,33 @@ def get_ffmpeg_encoder() -> str:
     return "libx264"
 
 
+def get_ffmpeg_encoder_for_codec(codec: str | None = None) -> str:
+    """Trả về bộ mã hóa tốt nhất cho codec được chỉ định."""
+    if codec is None or codec == "h264":
+        return get_ffmpeg_encoder()
+
+    gpu = detect_gpu()
+
+    if codec in ("h265", "hevc"):
+        if gpu["available"]:
+            try:
+                result = subprocess.run(
+                    ["ffmpeg", "-hide_banner", "-encoders"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                if "hevc_nvenc" in result.stdout:
+                    return "hevc_nvenc"
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                pass
+        return "libx265"
+
+    if codec == "vp9":
+        return "libvpx-vp9"
+
+    # Fallback
+    return get_ffmpeg_encoder()
+
+
 def get_ffmpeg_decoder() -> str:
     """Trả về bộ giải mã H.264 tốt nhất: 'h264_cuvid' hoặc mặc định."""
     gpu = detect_gpu()

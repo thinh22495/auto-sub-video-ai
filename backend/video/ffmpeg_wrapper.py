@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from backend.config.settings import settings
-from backend.video.hardware_detector import get_ffmpeg_decoder, get_ffmpeg_encoder
+from backend.video.hardware_detector import get_ffmpeg_decoder, get_ffmpeg_encoder, get_ffmpeg_encoder_for_codec
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,79 @@ def extract_audio(
     return output_path
 
 
+def _build_video_encode_cmd(
+    input_video: str,
+    output_path: str,
+    video_settings: dict | None = None,
+    vf_filters: list[str] | None = None,
+) -> list[str]:
+    """Tạo lệnh ffmpeg với cài đặt video mã hóa."""
+    vs = video_settings or {}
+
+    # Chọn encoder theo codec yêu cầu
+    requested_codec = vs.get("video_codec")
+    encoder = get_ffmpeg_encoder_for_codec(requested_codec)
+
+    # Xây dựng chuỗi video filter
+    filters = list(vf_filters or [])
+
+    # Thay đổi độ phân giải
+    resolution = vs.get("resolution")
+    if resolution:
+        scale_map = {"1080p": "1920:-2", "720p": "1280:-2", "480p": "854:-2"}
+        if resolution in scale_map:
+            filters.append(f"scale={scale_map[resolution]}")
+
+    # Thay đổi FPS
+    fps = vs.get("fps")
+    if fps:
+        filters.append(f"fps={fps}")
+
+    # Chất lượng mã hóa
+    crf = vs.get("crf", 23)
+    enc_preset = vs.get("preset", "medium")
+
+    # Audio
+    audio_codec = vs.get("audio_codec", "copy")
+    audio_bitrate = vs.get("audio_bitrate", 128)
+
+    # WebM: bắt buộc opus nếu audio=copy (AAC không tương thích webm)
+    output_ext = Path(output_path).suffix.lower()
+    if output_ext == ".webm" and audio_codec == "copy":
+        audio_codec = "opus"
+
+    cmd = [
+        "ffmpeg",
+        "-hide_banner",
+        "-y",
+        "-i", input_video,
+    ]
+
+    if filters:
+        cmd.extend(["-vf", ",".join(filters)])
+
+    cmd.extend(["-c:v", encoder])
+
+    # Tham số chất lượng theo encoder
+    if encoder in ("h264_nvenc", "hevc_nvenc"):
+        nvenc_preset = _map_preset_to_nvenc(enc_preset)
+        cmd.extend(["-preset", nvenc_preset, "-cq", str(crf)])
+    elif encoder == "libvpx-vp9":
+        cmd.extend(["-crf", str(crf), "-b:v", "0"])
+    else:  # libx264, libx265
+        cmd.extend(["-preset", enc_preset, "-crf", str(crf)])
+
+    # Audio encoding
+    if audio_codec == "copy":
+        cmd.extend(["-c:a", "copy"])
+    elif audio_codec == "aac":
+        cmd.extend(["-c:a", "aac", "-b:a", f"{audio_bitrate}k"])
+    elif audio_codec == "opus":
+        cmd.extend(["-c:a", "libopus", "-b:a", f"{audio_bitrate}k"])
+
+    return cmd
+
+
 def burn_subtitles(
     input_video: str,
     subtitle_file: str,
@@ -86,7 +159,7 @@ def burn_subtitles(
         input_video: Đường dẫn video đầu vào.
         subtitle_file: Đường dẫn tệp phụ đề (.srt, .ass, .vtt).
         output_path: Đường dẫn video đầu ra.
-        video_settings: Cài đặt mã hóa tùy chọn (crf, preset).
+        video_settings: Cài đặt mã hóa tùy chọn (crf, preset, video_codec, resolution, ...).
         on_progress: Hàm callback tiến trình.
     """
     input_file = Path(input_video)
@@ -98,49 +171,27 @@ def burn_subtitles(
         raise FileNotFoundError(f"Subtitle file not found: {subtitle_file}")
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-
     duration = get_duration(input_video)
-    encoder = get_ffmpeg_encoder()
-    vs = video_settings or {}
 
-    # Escape subtitle path for ffmpeg filter (backslashes and colons)
+    # Tạo subtitle filter
     escaped_sub = str(sub_file).replace("\\", "/").replace(":", "\\:")
-
-    # Build command based on subtitle format
     suffix = sub_file.suffix.lower()
     if suffix == ".ass":
-        vf_filter = f"ass='{escaped_sub}'"
+        sub_filter = f"ass='{escaped_sub}'"
     else:
-        vf_filter = f"subtitles='{escaped_sub}'"
+        sub_filter = f"subtitles='{escaped_sub}'"
 
-    # Encoding quality from video_settings or defaults
-    crf = vs.get("crf", 23)
-    enc_preset = vs.get("preset", "medium")
-
-    cmd = [
-        "ffmpeg",
-        "-hide_banner",
-        "-y",
-        "-i", input_video,
-        "-vf", vf_filter,
-        "-c:v", encoder,
-        "-c:a", "copy",
-    ]
-
-    if encoder == "h264_nvenc":
-        nvenc_preset = _map_preset_to_nvenc(enc_preset)
-        cmd.extend(["-preset", nvenc_preset, "-cq", str(crf)])
-    else:
-        cmd.extend(["-preset", enc_preset, "-crf", str(crf)])
+    cmd = _build_video_encode_cmd(input_video, output_path, video_settings, vf_filters=[sub_filter])
 
     use_progress = on_progress is not None and duration > 0
     if use_progress:
         cmd.extend(["-progress", "pipe:1"])
-
     cmd.append(output_path)
 
-    logger.info("Đang ghi phụ đề: %s + %s -> %s (encoder: %s, crf=%s, preset=%s)",
-                input_video, subtitle_file, output_path, encoder, crf, enc_preset)
+    vs = video_settings or {}
+    logger.info("Đang ghi phụ đề: %s + %s -> %s (codec=%s, crf=%s, preset=%s)",
+                input_video, subtitle_file, output_path,
+                vs.get("video_codec", "auto"), vs.get("crf", 23), vs.get("preset", "medium"))
 
     process = subprocess.Popen(
         cmd,
@@ -158,6 +209,59 @@ def burn_subtitles(
         raise RuntimeError(f"FFmpeg burn-in failed (code {process.returncode}): {(stderr_output or '')[:500]}")
 
     logger.info("Ghi phụ đề hoàn tất: %s", output_path)
+    return output_path
+
+
+def convert_video(
+    input_video: str,
+    output_path: str,
+    video_settings: dict | None = None,
+    on_progress: ProgressCallback | None = None,
+) -> str:
+    """
+    Chuyển đổi video sang định dạng/codec/chất lượng khác (không gắn phụ đề).
+
+    Args:
+        input_video: Đường dẫn video đầu vào.
+        output_path: Đường dẫn video đầu ra.
+        video_settings: Cài đặt mã hóa (output_format, video_codec, crf, preset, resolution, ...).
+        on_progress: Hàm callback tiến trình.
+    """
+    input_file = Path(input_video)
+    if not input_file.exists():
+        raise FileNotFoundError(f"Video not found: {input_video}")
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    duration = get_duration(input_video)
+
+    cmd = _build_video_encode_cmd(input_video, output_path, video_settings)
+
+    use_progress = on_progress is not None and duration > 0
+    if use_progress:
+        cmd.extend(["-progress", "pipe:1"])
+    cmd.append(output_path)
+
+    vs = video_settings or {}
+    logger.info("Đang chuyển đổi video: %s -> %s (codec=%s, crf=%s, preset=%s)",
+                input_video, output_path,
+                vs.get("video_codec", "auto"), vs.get("crf", 23), vs.get("preset", "medium"))
+
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE if use_progress else subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    if use_progress and process.stdout:
+        _parse_ffmpeg_progress(process.stdout, duration, on_progress, "Converting video")
+
+    _, stderr_output = process.communicate()
+
+    if process.returncode != 0:
+        raise RuntimeError(f"FFmpeg convert failed (code {process.returncode}): {(stderr_output or '')[:500]}")
+
+    logger.info("Chuyển đổi video hoàn tất: %s", output_path)
     return output_path
 
 

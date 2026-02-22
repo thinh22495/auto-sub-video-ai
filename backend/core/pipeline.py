@@ -31,6 +31,7 @@ class SubtitlePipeline:
     STEP_DIARIZE = 1
     STEP_TRANSLATE = 1
     STEP_BURNIN = 1
+    STEP_CONVERT = 1
 
     def __init__(
         self,
@@ -44,6 +45,7 @@ class SubtitlePipeline:
         ollama_model: str | None = None,
         subtitle_style: dict | None = None,
         video_preset: str | None = None,
+        video_output_settings: dict | None = None,
         db: Session | None = None,
         on_progress: ProgressCallback | None = None,
     ):
@@ -57,6 +59,7 @@ class SubtitlePipeline:
         self.ollama_model = ollama_model
         self.subtitle_style = subtitle_style
         self.video_preset = video_preset
+        self.video_output_settings = video_output_settings
         self.db = db
         self.on_progress = on_progress
 
@@ -68,6 +71,8 @@ class SubtitlePipeline:
             self.total_steps += self.STEP_TRANSLATE
         if burn_in:
             self.total_steps += self.STEP_BURNIN
+        elif video_output_settings:
+            self.total_steps += self.STEP_CONVERT
 
         self._current_step = 0
         self._results: dict = {}
@@ -96,7 +101,7 @@ class SubtitlePipeline:
 
     def _report(self, percent: float, message: str):
         if self.on_progress:
-            step_names = ["Extracting audio", "Transcribing", "Diarizing speakers", "Translating", "Generating subtitles", "Burning subtitles"]
+            step_names = ["Extracting audio", "Transcribing", "Diarizing speakers", "Translating", "Generating subtitles", "Burning subtitles", "Converting video"]
             step_name = step_names[min(self._current_step, len(step_names) - 1)]
             self.on_progress(ProgressInfo(
                 step=step_name,
@@ -134,10 +139,12 @@ class SubtitlePipeline:
         # Bước 5: Tạo tệp phụ đề
         subtitle_paths = self._step_generate_subtitles(segments, input_file.stem)
 
-        # Bước 6: Ghi phụ đề vào video (tùy chọn)
+        # Bước 6: Ghi phụ đề vào video (tùy chọn) hoặc chuyển đổi video
         output_video_path = None
         if self.burn_in and subtitle_paths:
             output_video_path = self._step_burn_in(subtitle_paths[0])
+        elif self.video_output_settings:
+            output_video_path = self._step_convert_video()
 
         # Dọn dẹp tệp âm thanh tạm
         try:
@@ -303,6 +310,25 @@ class SubtitlePipeline:
 
         return subtitle_paths
 
+    def _get_merged_video_settings(self) -> dict:
+        """Gộp cài đặt video từ preset và video_output_settings (ưu tiên video_output_settings)."""
+        video_settings = {}
+        if self.video_preset:
+            from backend.video.presets import get_builtin_preset
+            preset = get_builtin_preset(self.video_preset)
+            if preset:
+                video_settings = dict(preset.get("video_settings", {}))
+        if self.video_output_settings:
+            video_settings.update(self.video_output_settings)
+        return video_settings
+
+    def _get_output_extension(self) -> str:
+        """Xác định extension file đầu ra dựa trên video_output_settings."""
+        input_file = Path(self.input_path)
+        if self.video_output_settings and self.video_output_settings.get("output_format"):
+            return f".{self.video_output_settings['output_format']}"
+        return input_file.suffix
+
     def _step_burn_in(self, subtitle_path: str) -> str:
         from backend.video.ffmpeg_wrapper import burn_subtitles
 
@@ -315,7 +341,8 @@ class SubtitlePipeline:
         input_file = Path(self.input_path)
         output_dir = Path(settings.VIDEO_OUTPUT_DIR)
         output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = str(output_dir / f"{input_file.stem}_subbed{input_file.suffix}")
+        output_ext = self._get_output_extension()
+        output_path = str(output_dir / f"{input_file.stem}_subbed{output_ext}")
 
         def on_ffmpeg_progress(percent, msg):
             base = (self._current_step / self.total_steps) * 100
@@ -323,19 +350,45 @@ class SubtitlePipeline:
             overall = base + (percent / 100) * step_range
             self._report(overall, msg)
 
-        # Lấy cài đặt mã hóa video từ preset
-        video_settings = None
-        if self.video_preset:
-            from backend.video.presets import get_builtin_preset
-            preset = get_builtin_preset(self.video_preset)
-            if preset:
-                video_settings = preset.get("video_settings")
+        video_settings = self._get_merged_video_settings()
 
         result_path = burn_subtitles(
             input_video=self.input_path,
             subtitle_file=subtitle_path,
             output_path=output_path,
-            video_settings=video_settings,
+            video_settings=video_settings or None,
+            on_progress=on_ffmpeg_progress,
+        )
+
+        return result_path
+
+    def _step_convert_video(self) -> str:
+        from backend.video.ffmpeg_wrapper import convert_video
+
+        self._current_step = self.total_steps - 1
+        self._report(
+            (self._current_step / self.total_steps) * 100,
+            "Converting video...",
+        )
+
+        input_file = Path(self.input_path)
+        output_dir = Path(settings.VIDEO_OUTPUT_DIR)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_ext = self._get_output_extension()
+        output_path = str(output_dir / f"{input_file.stem}_converted{output_ext}")
+
+        def on_ffmpeg_progress(percent, msg):
+            base = (self._current_step / self.total_steps) * 100
+            step_range = (1 / self.total_steps) * 100
+            overall = base + (percent / 100) * step_range
+            self._report(overall, msg)
+
+        video_settings = self._get_merged_video_settings()
+
+        result_path = convert_video(
+            input_video=self.input_path,
+            output_path=output_path,
+            video_settings=video_settings or None,
             on_progress=on_ffmpeg_progress,
         )
 

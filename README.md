@@ -28,41 +28,74 @@ Công cụ tạo phụ đề video hoàn toàn offline, tự host với giao di�
 git clone https://github.com/your-org/autosub-ai.git
 cd autosub-ai
 
-# Cài đặt một lệnh (copy .env, tạo thư mục, build, khởi chạy)
-make setup
-
-# Tải mô hình dịch thuật mặc định (tùy chọn, dùng cho tính năng dịch)
-docker compose exec autosub-app bash scripts/setup_models.sh
-```
-
-Mở **http://localhost:8080** trên trình duyệt.
-
-## Cài đặt thủ công
-
-```bash
-# 1. Sao chép file cấu hình
+# Sao chép file cấu hình
 cp .env.example .env
 
-# 2. Tạo thư mục dữ liệu
+# Tạo thư mục dữ liệu
 mkdir -p data/videos data/subtitles data/output data/models data/db data/ollama
+```
 
-# 3. Build và khởi chạy
+### Máy có NVIDIA GPU
+
+> **Yêu cầu**: Đã cài [NVIDIA Driver](https://www.nvidia.com/Download/index.aspx) và [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
+
+Kiểm tra GPU hoạt động trong Docker trước:
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi
+```
+
+Nếu lệnh trên hiển thị thông tin GPU thành công, tiến hành build và chạy:
+
+```bash
+# Build images
 docker compose build
-docker compose up -d
 
-# 4. Kiểm tra trạng thái
+# Khởi chạy với GPU
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+
+# Kiểm tra trạng thái
 curl http://localhost:8080/api/health | python3 -m json.tool
 ```
 
-## Chế độ chỉ CPU
-
-Nếu bạn không có NVIDIA GPU:
+Dừng dịch vụ:
 
 ```bash
-make up-cpu
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml down
 ```
 
-Lệnh này bỏ qua yêu cầu GPU. Whisper chạy trên CPU (chậm hơn nhưng vẫn hoạt động), FFmpeg sử dụng `libx264` thay vì NVENC.
+### Máy không có GPU (chỉ CPU)
+
+Không cần cài thêm gì ngoài Docker. Whisper sẽ chạy trên CPU (chậm hơn nhưng vẫn hoạt động), FFmpeg sử dụng `libx264` thay vì NVENC.
+
+> **Lưu ý**: Nên dùng mô hình Whisper nhỏ (`tiny`, `base`, `small`) để xử lý nhanh hơn trên CPU. Chỉnh trong file `.env`: `AUTOSUB_DEFAULT_WHISPER_MODEL=small`
+
+```bash
+# Build images
+docker compose build
+
+# Khởi chạy chế độ CPU
+docker compose -f docker-compose.yml -f docker-compose.cpu.yml up -d
+
+# Kiểm tra trạng thái
+curl http://localhost:8080/api/health | python3 -m json.tool
+```
+
+Dừng dịch vụ:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cpu.yml down
+```
+
+### Tải mô hình dịch thuật (tùy chọn)
+
+Sau khi dịch vụ đã chạy, tải mô hình Ollama cho tính năng dịch thuật:
+
+```bash
+docker compose exec autosub-ollama ollama pull qwen2.5:7b
+```
+
+Mở **http://localhost:8080** trên trình duyệt để bắt đầu sử dụng.
 
 ## Hướng dẫn sử dụng
 
@@ -151,29 +184,22 @@ Tài liệu API đầy đủ: `http://localhost:8080/docs` (Swagger UI)
 ## Phát triển
 
 ```bash
-# Backend (yêu cầu Python 3.12, Redis đang chạy)
-make dev-backend
-
-# Frontend (yêu cầu Node.js 22)
-make dev-frontend
-
 # Chạy tests
 cd backend && python -m pytest ../tests/ -v
 ```
 
-## Lệnh Makefile
+## Các lệnh Docker thường dùng
 
 | Lệnh | Mô tả |
 |-------|-------|
-| `make setup` | Cài đặt lần đầu (build + khởi chạy) |
-| `make build` | Build Docker images |
-| `make up` | Khởi chạy dịch vụ (GPU) |
-| `make up-cpu` | Khởi chạy dịch vụ (chỉ CPU) |
-| `make down` | Dừng dịch vụ |
-| `make logs` | Theo dõi log |
-| `make restart` | Khởi động lại dịch vụ |
-| `make clean` | Xóa containers, volumes, images |
-| `make health` | Kiểm tra sức khỏe API |
+| `docker compose build` | Build Docker images |
+| `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d` | Khởi chạy dịch vụ (GPU) |
+| `docker compose -f docker-compose.yml -f docker-compose.cpu.yml up -d` | Khởi chạy dịch vụ (chỉ CPU) |
+| `docker compose down` | Dừng dịch vụ |
+| `docker compose logs -f` | Theo dõi log |
+| `docker compose restart` | Khởi động lại dịch vụ |
+| `docker compose down -v --rmi all` | Xóa containers, volumes, images |
+| `curl http://localhost:8080/api/health` | Kiểm tra sức khỏe API |
 
 ## Xử lý sự cố
 

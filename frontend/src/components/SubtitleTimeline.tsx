@@ -11,6 +11,7 @@ interface SubtitleTimelineProps {
   onSelect: (index: number) => void;
   onSeek: (time: number) => void;
   onSegmentTimeChange: (index: number, start: number, end: number) => void;
+  onDragEnd?: () => void;
 }
 
 const SPEAKER_COLORS = [
@@ -29,6 +30,7 @@ export default function SubtitleTimeline({
   onSelect,
   onSeek,
   onSegmentTimeChange,
+  onDragEnd,
 }: SubtitleTimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<{
@@ -121,6 +123,9 @@ export default function SubtitleTimeline({
   );
 
   const handleMouseUp = () => {
+    if (dragging) {
+      onDragEnd?.();
+    }
     setDragging(null);
   };
 

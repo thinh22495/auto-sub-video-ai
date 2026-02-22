@@ -71,6 +71,7 @@ def run_pipeline(self, job_id: str):
         # Phân tích tham số công việc
         output_formats = json.loads(job.output_formats) if isinstance(job.output_formats, str) else job.output_formats
         subtitle_style = json.loads(job.subtitle_style) if job.subtitle_style else None
+        video_output_settings = json.loads(job.video_output_settings) if job.video_output_settings else None
 
         # Chạy pipeline
         from backend.core.pipeline import SubtitlePipeline
@@ -86,6 +87,7 @@ def run_pipeline(self, job_id: str):
             ollama_model=job.ollama_model,
             subtitle_style=subtitle_style,
             video_preset=job.video_preset,
+            video_output_settings=video_output_settings,
             db=db,
             on_progress=on_progress,
         )

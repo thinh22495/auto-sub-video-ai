@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useJob } from "@/hooks/useJob";
-import { api } from "@/lib/api-client";
+import { api, API_BASE } from "@/lib/api-client";
 import type { SubtitleSegment, ParsedSubtitles, SubtitleVersion } from "@/lib/types";
 import WaveformDisplay from "@/components/WaveformDisplay";
 import SubtitleTimeline from "@/components/SubtitleTimeline";
@@ -27,8 +27,6 @@ import {
   RotateCcw,
   Volume2,
 } from "lucide-react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 // Undo/redo history
 interface HistoryEntry {
@@ -62,6 +60,9 @@ export default function SubtitleEditorPage() {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  // Video error
+  const [videoError, setVideoError] = useState(false);
 
   // Version history panel
   const [showVersions, setShowVersions] = useState(false);
@@ -97,20 +98,26 @@ export default function SubtitleEditorPage() {
     if (!video) return;
 
     const onTimeUpdate = () => setCurrentTime(video.currentTime);
-    const onLoaded = () => setDuration(video.duration);
+    const onLoaded = () => {
+      setDuration(video.duration);
+      setVideoError(false);
+    };
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
+    const onError = () => setVideoError(true);
 
     video.addEventListener("timeupdate", onTimeUpdate);
     video.addEventListener("loadedmetadata", onLoaded);
     video.addEventListener("play", onPlay);
     video.addEventListener("pause", onPause);
+    video.addEventListener("error", onError);
 
     return () => {
       video.removeEventListener("timeupdate", onTimeUpdate);
       video.removeEventListener("loadedmetadata", onLoaded);
       video.removeEventListener("play", onPlay);
       video.removeEventListener("pause", onPause);
+      video.removeEventListener("error", onError);
     };
   }, []);
 
@@ -259,7 +266,7 @@ export default function SubtitleEditorPage() {
   };
 
   // --- Save ---
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
     try {
       await api.put(`/jobs/${jobId}/subtitles`, {
@@ -273,7 +280,7 @@ export default function SubtitleEditorPage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [jobId, segments]);
 
   // --- Version history ---
   const loadVersions = async () => {
@@ -300,22 +307,26 @@ export default function SubtitleEditorPage() {
   };
 
   // --- Playback ---
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     if (playing) video.pause();
     else video.play();
-  };
+  }, [playing]);
 
-  const seekTo = (time: number) => {
+  const seekTo = useCallback((time: number) => {
     const video = videoRef.current;
     if (video) video.currentTime = time;
     setCurrentTime(time);
-  };
+  }, []);
 
-  const skip = (delta: number) => {
-    seekTo(Math.max(0, Math.min(duration, currentTime + delta)));
-  };
+  const skip = useCallback((delta: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const newTime = Math.max(0, Math.min(video.duration || 0, (video.currentTime || 0) + delta));
+    video.currentTime = newTime;
+    setCurrentTime(newTime);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -343,7 +354,7 @@ export default function SubtitleEditorPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [playing, currentTime, duration, undo, redo]);
+  }, [togglePlay, skip, undo, redo, handleSave]);
 
   // --- Loading states ---
   if (jobLoading || loadingSubtitles) {
@@ -478,15 +489,31 @@ export default function SubtitleEditorPage() {
               src={`${API_BASE}/files/video/stream?path=${encodeURIComponent(job.input_path)}`}
               preload="metadata"
             />
-            {/* Subtitle overlay */}
-            {selectedSeg && currentTime >= selectedSeg.start && currentTime <= selectedSeg.end && (
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 rounded bg-black/80 px-3 py-1 text-center text-sm text-white">
-                {selectedSeg.speaker && (
-                  <span className="text-primary">[{selectedSeg.speaker}] </span>
-                )}
-                {selectedSeg.text}
+            {/* Video error overlay */}
+            {videoError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+                <div className="text-center">
+                  <p className="text-sm text-red-400">Không thể tải video</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Kiểm tra kết nối hoặc định dạng video
+                  </p>
+                </div>
               </div>
             )}
+            {/* Subtitle overlay - show active segment at current time */}
+            {(() => {
+              const activeSeg = segments.find(
+                (s) => currentTime >= s.start && currentTime <= s.end
+              );
+              return activeSeg ? (
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 rounded bg-black/80 px-3 py-1 text-center text-sm text-white">
+                  {activeSeg.speaker && (
+                    <span className="text-primary">[{activeSeg.speaker}] </span>
+                  )}
+                  {activeSeg.text}
+                </div>
+              ) : null;
+            })()}
           </div>
 
           {/* Playback controls */}
@@ -536,6 +563,7 @@ export default function SubtitleEditorPage() {
             onSegmentTimeChange={(idx, start, end) => {
               handleSegmentTimeChange(idx, start, end);
             }}
+            onDragEnd={() => commitSegmentEdit("Adjust timing on timeline")}
           />
         </div>
 
